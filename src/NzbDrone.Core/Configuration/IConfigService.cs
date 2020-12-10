@@ -89,6 +89,7 @@ namespace NzbDrone.Core.Configuration
         int BackupRetention { get; }
 
         CertificateValidationType CertificateValidation { get; }
+        bool CopyUsingSymlinks { get; set; }
         string ApplicationUrl { get; }
     }
 }

@@ -93,6 +93,12 @@ namespace NzbDrone.Core.MediaFiles
 
             EnsureEpisodeFolder(episodeFile, localEpisode, filePath);
 
+            if (_configService.CopyUsingSymlinks)
+            {
+                _logger.Debug("Symlinking episode file: {0} to {1}", episodeFile.Path, filePath);
+                return TransferFile(episodeFile, localEpisode.Series, localEpisode.Episodes, filePath, TransferMode.SymLink);
+            }
+
             if (_configService.CopyUsingHardlinks)
             {
                 _logger.Debug("Attempting to hardlink episode file: {0} to {1}", episodeFile.Path, filePath);
