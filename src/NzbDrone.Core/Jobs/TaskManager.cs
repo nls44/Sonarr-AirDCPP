@@ -12,6 +12,7 @@ using NzbDrone.Core.HealthCheck;
 using NzbDrone.Core.Housekeeping;
 using NzbDrone.Core.ImportLists;
 using NzbDrone.Core.Indexers;
+using NzbDrone.Core.IndexerSearch;
 using NzbDrone.Core.Lifecycle;
 using NzbDrone.Core.MediaFiles.Commands;
 using NzbDrone.Core.Messaging.Commands;
@@ -131,6 +132,12 @@ namespace NzbDrone.Core.Jobs
                     {
                         Interval = GetRssSyncInterval(),
                         TypeName = typeof(RssSyncCommand).FullName
+                    },
+
+                    new ScheduledTask
+                    {
+                        Interval = 30,
+                        TypeName = typeof(MissingEpisodeSearchCommand).FullName
                     }
                 };
 
