@@ -7,6 +7,38 @@
 
 Sonarr is a PVR for Usenet and BitTorrent users. It can monitor multiple RSS feeds for new episodes of your favorite shows and will grab, sort and rename them. It can also be configured to automatically upgrade the quality of files already downloaded when a better quality format becomes available.
 
+*Important* Make sure you disable automatic updates to prevent installing the normal Sonarr versions!
+
+Sonarr-AirDCPP adds airdcpp-web as both an indexer and download client. You can keep the original release dirs by using the symlink support added to this fork in combination with rar2fs. Setup a "Remove Path Mapping" on the Settings -> Download Clients page with your AirDCPP download dir (the same as you use in the Download Client config) as the Remote Path and the rar2fs mount that contains the extracted movies as your Local Path. This will create a symlink in the Sonarr dirs linking to the rar2fs episode file.
+
+## Example config (screenshots are from Radarr, but Sonarr config is identical):
+
+Default download directory in AirDCPP: /mnt/movies/
+
+RAR2FS mount, containing the (virtually) extracted content of /mnt/movies: /mnt/plex/movies
+
+First enable experimental symlink support under Media Management (advanced settings) (no automatic upgrades for now if you use this option):
+
+![image](https://user-images.githubusercontent.com/1114597/102639917-00ba3f00-415a-11eb-8eb8-30670bb0ef46.png)
+
+This option, in combination with a rar2fs mount, will allow you to keep your original release files/rars. It will import the movie to the Radarr movie dir and create a symlink linking to the rar2fs movie. With the example config, your movie would be downloaded to /mnt/movies/Sample.Movie.2018.1080p.Bluray-GROUP and the rar2fs mount /mnt/plex/movies/Sample.Movie.2018.1080p.Bluray-GROUP would show the extracted content. Radarr-AirDCPP will create a symlink to the movie file, not touching your original files.
+
+AirDCPP indexer:
+
+![image](https://user-images.githubusercontent.com/1114597/102640118-4aa32500-415a-11eb-83b7-e25eddf38993.png)
+
+AirDCPP download client:
+
+![image](https://user-images.githubusercontent.com/1114597/102640233-76bea600-415a-11eb-8aab-226440e5a69e.png)
+
+Completed download handling settings:
+
+![image](https://user-images.githubusercontent.com/1114597/102641323-3102dd00-415c-11eb-98b5-f4836be3caa6.png)
+
+Remote path mapping for the AirDCPP download dir and the rar2fs mount:
+
+![image](https://user-images.githubusercontent.com/1114597/102640513-dddc5a80-415a-11eb-80a4-d68be79dbc9d.png)
+
 ## Getting Started
 
 - [Download/Installation](https://sonarr.tv/#downloads-v3)
