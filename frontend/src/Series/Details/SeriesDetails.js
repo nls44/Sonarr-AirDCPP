@@ -175,6 +175,7 @@ class SeriesDetails extends Component {
       tvdbId,
       tvMazeId,
       imdbId,
+      customTitle,
       title,
       runtime,
       ratings,

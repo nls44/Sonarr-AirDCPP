@@ -81,6 +81,7 @@ class EditSeriesModalContent extends Component {
       qualityProfileId,
       seriesType,
       path,
+      customTitle,
       tags
     } = item;
 
@@ -171,6 +172,17 @@ class EditSeriesModalContent extends Component {
                 type={inputTypes.PATH}
                 name="path"
                 {...path}
+                onChange={onInputChange}
+              />
+            </FormGroup>
+
+            <FormGroup>
+              <FormLabel>Custom Title</FormLabel>
+
+              <FormInputGroup
+                type={inputTypes.TEXT}
+                name="customTitle"
+                {...customTitle}
                 onChange={onInputChange}
               />
             </FormGroup>

@@ -41,6 +41,7 @@ function createMapStateToProps() {
         'monitorNewItems',
         'seasonFolder',
         'qualityProfileId',
+        'customTitle',
         'seriesType',
         'path',
         'tags'
@@ -50,6 +51,7 @@ function createMapStateToProps() {
 
       return {
         title: series.title,
+        customTitle: series.customTitle,
         isSaving,
         saveError,
         isPathChanging,
