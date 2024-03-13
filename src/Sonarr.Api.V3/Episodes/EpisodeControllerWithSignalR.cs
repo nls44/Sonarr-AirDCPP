@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
+using NzbDrone.Common.Disk;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.Datastore.Events;
 using NzbDrone.Core.DecisionEngine.Specifications;
@@ -23,18 +25,24 @@ namespace Sonarr.Api.V3.Episodes
         protected readonly ISeriesService _seriesService;
         protected readonly IUpgradableSpecification _upgradableSpecification;
         protected readonly ICustomFormatCalculationService _formatCalculator;
+        private readonly IConfigService _configService;
+        private readonly IDiskProvider _diskProvider;
 
         protected EpisodeControllerWithSignalR(IEpisodeService episodeService,
                                            ISeriesService seriesService,
                                            IUpgradableSpecification upgradableSpecification,
                                            ICustomFormatCalculationService formatCalculator,
-                                           IBroadcastSignalRMessage signalRBroadcaster)
+                                           IBroadcastSignalRMessage signalRBroadcaster,
+                                           IConfigService configService,
+                                           IDiskProvider diskProvider)
             : base(signalRBroadcaster)
         {
             _episodeService = episodeService;
             _seriesService = seriesService;
             _upgradableSpecification = upgradableSpecification;
             _formatCalculator = formatCalculator;
+            _configService = configService;
+            _diskProvider = diskProvider;
         }
 
         protected EpisodeControllerWithSignalR(IEpisodeService episodeService,
@@ -73,7 +81,11 @@ namespace Sonarr.Api.V3.Episodes
 
                 if (includeEpisodeFile && episode.EpisodeFileId != 0)
                 {
-                    resource.EpisodeFile = episode.EpisodeFile.Value.ToResource(series, _upgradableSpecification, _formatCalculator);
+                    resource.EpisodeFile = episode.EpisodeFile.Value.ToResource(series,
+                        _upgradableSpecification,
+                        _formatCalculator,
+                        _configService.CopyUsingSymlinks,
+                        _diskProvider);
                 }
 
                 if (includeImages)
@@ -107,7 +119,11 @@ namespace Sonarr.Api.V3.Episodes
 
                     if (includeEpisodeFile && episode.EpisodeFileId != 0)
                     {
-                        resource.EpisodeFile = episode.EpisodeFile.Value.ToResource(series, _upgradableSpecification, _formatCalculator);
+                        resource.EpisodeFile = episode.EpisodeFile.Value.ToResource(series,
+                            _upgradableSpecification,
+                            _formatCalculator,
+                            _configService.CopyUsingSymlinks,
+                            _diskProvider);
                     }
 
                     if (includeImages)

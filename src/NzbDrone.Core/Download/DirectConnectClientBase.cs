@@ -1,8 +1,10 @@
+using System.Threading.Tasks;
 using NLog;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Indexers;
+using NzbDrone.Core.Localization;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.RemotePathMappings;
 using NzbDrone.Core.ThingiProvider;
@@ -18,8 +20,9 @@ namespace NzbDrone.Core.Download
                                    IConfigService configService,
                                    IDiskProvider diskProvider,
                                    IRemotePathMappingService remotePathMappingService,
-                                   Logger logger)
-            : base(configService, diskProvider, remotePathMappingService, logger)
+                                   Logger logger,
+                                   ILocalizationService localizationService)
+            : base(configService, diskProvider, remotePathMappingService, logger, localizationService)
         {
             _httpClient = httpClient;
         }
@@ -28,11 +31,12 @@ namespace NzbDrone.Core.Download
 
         protected abstract string AddFromId(string id, string title);
 
-        public override string Download(RemoteEpisode remoteEpisode)
+        public override Task<string> Download(RemoteEpisode remoteEpisode, IIndexer indexer)
         {
             var id = remoteEpisode.Release.DownloadUrl;
             _logger.Info("Adding report [{0}] to the queue.", remoteEpisode.Release.Title);
-            return AddFromId(id, remoteEpisode.Release.Title);
+            var downloadResult = AddFromId(id, remoteEpisode.Release.Title);
+            return Task.FromResult(downloadResult);
         }
     }
 }

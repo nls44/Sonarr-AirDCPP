@@ -1,13 +1,14 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using FluentValidation.Results;
 using NLog;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Indexers.AirDCPP;
+using NzbDrone.Core.Localization;
 using NzbDrone.Core.RemotePathMappings;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace NzbDrone.Core.Download.Clients.AirDCPP
 {
@@ -22,8 +23,9 @@ namespace NzbDrone.Core.Download.Clients.AirDCPP
                       IConfigService configService,
                       IDiskProvider diskProvider,
                       IRemotePathMappingService remotePathMappingService,
-                      Logger logger)
-            : base(httpClient, configService, diskProvider, remotePathMappingService, logger)
+                      Logger logger,
+                      ILocalizationService localizationService)
+            : base(httpClient, configService, diskProvider, remotePathMappingService, logger, localizationService)
         {
             _airDCPPProxy = new AirDCPPProxy(httpClient, logger);
         }
@@ -44,6 +46,11 @@ namespace NzbDrone.Core.Download.Clients.AirDCPP
             });
         }
 
+        public override void RemoveItem(DownloadClientItem item, bool deleteData)
+        {
+            throw new NotImplementedException();
+        }
+
         public override DownloadClientInfo GetStatus()
         {
             return new DownloadClientInfo
@@ -51,11 +58,6 @@ namespace NzbDrone.Core.Download.Clients.AirDCPP
                 IsLocalhost = false,
                 OutputRootFolders = new List<OsPath> { new OsPath(Settings.DownloadDirectory) }
             };
-        }
-
-        public override void RemoveItem(string downloadId, bool deleteData)
-        {
-            throw new NotImplementedException();
         }
 
         protected override void Test(List<ValidationFailure> failures)

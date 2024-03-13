@@ -1,10 +1,10 @@
+using System;
+using System.Collections.Generic;
+using System.Net;
 using NzbDrone.Common.Serializer;
 using NzbDrone.Core.Indexers.AirDCPP.Responses;
 using NzbDrone.Core.Indexers.Exceptions;
 using NzbDrone.Core.Parser.Model;
-using System;
-using System.Collections.Generic;
-using System.Net;
 
 namespace NzbDrone.Core.Indexers.AirDCPP
 {
@@ -20,6 +20,7 @@ namespace NzbDrone.Core.Indexers.AirDCPP
         public IList<ReleaseInfo> ParseResponse(IndexerResponse indexerResponse)
         {
             var releases = new List<ReleaseInfo>();
+
             // here we receive the response from the search we defined in the request generator
             if (indexerResponse.HttpResponse.StatusCode != HttpStatusCode.OK)
             {
@@ -50,14 +51,13 @@ namespace NzbDrone.Core.Indexers.AirDCPP
             return releases.ToArray();
         }
 
-        private static readonly DateTime epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        private static readonly DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-        public static DateTime FromUnixTime(long unixTime)
+        private static DateTime FromUnixTime(long unixTime)
         {
-            return epoch.AddSeconds(unixTime);
+            return Epoch.AddSeconds(unixTime);
         }
 
         public Action<IDictionary<string, string>, DateTime?> CookiesUpdater { get; set; }
-
     }
 }

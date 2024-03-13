@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
+using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.DecisionEngine.Specifications;
 using NzbDrone.Core.Tags;
@@ -23,8 +25,10 @@ namespace Sonarr.Api.V3.Calendar
                             ISeriesService seriesService,
                             IUpgradableSpecification qualityUpgradableSpecification,
                             ITagService tagService,
-                            ICustomFormatCalculationService formatCalculator)
-            : base(episodeService, seriesService, qualityUpgradableSpecification, formatCalculator, signalR)
+                            ICustomFormatCalculationService formatCalculator,
+                            IConfigService configService,
+                            IDiskProvider diskProvider)
+            : base(episodeService, seriesService, qualityUpgradableSpecification, formatCalculator, signalR, configService, diskProvider)
         {
             _tagService = tagService;
         }

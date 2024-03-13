@@ -1,3 +1,9 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Net;
+using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using NLog;
 using NzbDrone.Common.Http;
@@ -5,11 +11,6 @@ using NzbDrone.Common.Serializer;
 using NzbDrone.Core.Download.Clients;
 using NzbDrone.Core.Download.Clients.AirDCPP;
 using NzbDrone.Core.Indexers.AirDCPP.Responses;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Net;
-using System.Text.RegularExpressions;
 
 namespace NzbDrone.Core.Indexers.AirDCPP
 {
@@ -65,11 +66,11 @@ namespace NzbDrone.Core.Indexers.AirDCPP
             return Regex.Replace(filename, @"[^0-9A-Za-z ,]", "");
         }
 
-        private bool Delay(int millisecond)
+        private void Delay(int millisecond)
         {
             var sw = new Stopwatch();
             sw.Start();
-            bool flag = false;
+            var flag = false;
             while (!flag)
             {
                 if (sw.ElapsedMilliseconds > millisecond)
@@ -79,7 +80,6 @@ namespace NzbDrone.Core.Indexers.AirDCPP
             }
 
             sw.Stop();
-            return true;
         }
 
         private int CreateSearchInstance()
@@ -136,7 +136,7 @@ namespace NzbDrone.Core.Indexers.AirDCPP
             ProcessRequest<DownloadResultResponse>(downloadRequest);
 
             // next, search for the id of the bundle that has now been added to the queue
-            string downloadBundleId = string.Empty;
+            var downloadBundleId = string.Empty;
 
             while (string.IsNullOrEmpty(downloadBundleId))
             {
@@ -162,7 +162,10 @@ namespace NzbDrone.Core.Indexers.AirDCPP
                 LogResponseContent = true,
                 NetworkCredential = new NetworkCredential(Settings.Username, Settings.Password)
             };
+
+            var b64Credentials = Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes($"{Settings.Username}:{Settings.Password}"));
             requestBuilder.SetHeader("Content-Type", "application/json");
+            requestBuilder.SetHeader("Authorization", $"Basic {b64Credentials}");
 
             return requestBuilder;
         }
@@ -174,7 +177,10 @@ namespace NzbDrone.Core.Indexers.AirDCPP
                 LogResponseContent = true,
                 NetworkCredential = new NetworkCredential(settings.Username, settings.Password)
             };
+
+            var b64Credentials = Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes($"{settings.Username}:{settings.Password}"));
             requestBuilder.SetHeader("Content-Type", "application/json");
+            requestBuilder.SetHeader("Authorization", $"Basic {b64Credentials}");
 
             return requestBuilder;
         }

@@ -1,9 +1,9 @@
-using NLog;
-using NzbDrone.Common.Http;
-using NzbDrone.Core.IndexerSearch.Definitions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using NLog;
+using NzbDrone.Common.Http;
+using NzbDrone.Core.IndexerSearch.Definitions;
 
 namespace NzbDrone.Core.Indexers.AirDCPP
 {
@@ -31,6 +31,7 @@ namespace NzbDrone.Core.Indexers.AirDCPP
 
             return pageableRequests;
         }
+
         public virtual IndexerPageableRequestChain GetSearchRequests(SingleEpisodeSearchCriteria searchCriteria)
         {
             return GetDefaultSearchRequest(searchCriteria.Series.Title, searchCriteria.Episodes.Select(e => (e.SeasonNumber, e.EpisodeNumber)).ToList());
@@ -67,6 +68,11 @@ namespace NzbDrone.Core.Indexers.AirDCPP
         public virtual IndexerPageableRequestChain GetSearchRequests(AnimeEpisodeSearchCriteria searchCriteria)
         {
             return new IndexerPageableRequestChain();
+        }
+
+        public IndexerPageableRequestChain GetSearchRequests(AnimeSeasonSearchCriteria searchCriteria)
+        {
+            throw new NotImplementedException();
         }
 
         public virtual IndexerPageableRequestChain GetSearchRequests(SpecialEpisodeSearchCriteria searchCriteria)

@@ -1,6 +1,7 @@
 using NLog;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
+using NzbDrone.Core.Localization;
 using NzbDrone.Core.Parser;
 
 namespace NzbDrone.Core.Indexers.AirDCPP
@@ -12,8 +13,8 @@ namespace NzbDrone.Core.Indexers.AirDCPP
 
         public override DownloadProtocol Protocol => DownloadProtocol.DirectConnect;
 
-        public AirDCPP(IHttpClient httpClient, IIndexerStatusService indexerStatusService, IConfigService configService, IParsingService parsingService, Logger logger)
-            : base(httpClient, indexerStatusService, configService, parsingService, logger)
+        public AirDCPP(IHttpClient httpClient, IIndexerStatusService indexerStatusService, IConfigService configService, IParsingService parsingService, Logger logger, ILocalizationService localizationService)
+            : base(httpClient, indexerStatusService, configService, parsingService, logger, localizationService)
         {
         }
 

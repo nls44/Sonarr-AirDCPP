@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
+using NzbDrone.Common.Disk;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.Datastore.Events;
 using NzbDrone.Core.DecisionEngine.Specifications;
@@ -28,13 +30,17 @@ namespace Sonarr.Api.V3.EpisodeFiles
         private readonly ISeriesService _seriesService;
         private readonly ICustomFormatCalculationService _formatCalculator;
         private readonly IUpgradableSpecification _upgradableSpecification;
+        private readonly IConfigService _configService;
+        private readonly IDiskProvider _diskProvider;
 
         public EpisodeFileController(IBroadcastSignalRMessage signalRBroadcaster,
                              IMediaFileService mediaFileService,
                              IDeleteMediaFiles mediaFileDeletionService,
                              ISeriesService seriesService,
                              ICustomFormatCalculationService formatCalculator,
-                             IUpgradableSpecification upgradableSpecification)
+                             IUpgradableSpecification upgradableSpecification,
+                             IConfigService configService,
+                             IDiskProvider diskProvider)
             : base(signalRBroadcaster)
         {
             _mediaFileService = mediaFileService;
@@ -42,6 +48,8 @@ namespace Sonarr.Api.V3.EpisodeFiles
             _seriesService = seriesService;
             _formatCalculator = formatCalculator;
             _upgradableSpecification = upgradableSpecification;
+            _configService = configService;
+            _diskProvider = diskProvider;
         }
 
         protected override EpisodeFileResource GetResourceById(int id)
@@ -49,7 +57,7 @@ namespace Sonarr.Api.V3.EpisodeFiles
             var episodeFile = _mediaFileService.Get(id);
             var series = _seriesService.GetSeries(episodeFile.SeriesId);
 
-            var resource = episodeFile.ToResource(series, _upgradableSpecification, _formatCalculator);
+            var resource = episodeFile.ToResource(series, _upgradableSpecification, _formatCalculator, _configService.CopyUsingSymlinks, _diskProvider);
 
             return resource;
         }
@@ -73,7 +81,7 @@ namespace Sonarr.Api.V3.EpisodeFiles
                     return new List<EpisodeFileResource>();
                 }
 
-                return files.ConvertAll(e => e.ToResource(series, _upgradableSpecification, _formatCalculator))
+                return files.ConvertAll(e => e.ToResource(series, _upgradableSpecification, _formatCalculator, _configService.CopyUsingSymlinks, _diskProvider))
                             .ToList();
             }
             else
@@ -82,7 +90,7 @@ namespace Sonarr.Api.V3.EpisodeFiles
 
                 return episodeFiles.GroupBy(e => e.SeriesId)
                                    .SelectMany(f => f.ToList()
-                                                     .ConvertAll(e => e.ToResource(_seriesService.GetSeries(f.Key), _upgradableSpecification, _formatCalculator)))
+                                                     .ConvertAll(e => e.ToResource(_seriesService.GetSeries(f.Key), _upgradableSpecification, _formatCalculator, _configService.CopyUsingSymlinks, _diskProvider)))
                                    .ToList();
             }
         }
@@ -141,7 +149,7 @@ namespace Sonarr.Api.V3.EpisodeFiles
 
             var series = _seriesService.GetSeries(episodeFiles.First().SeriesId);
 
-            return Accepted(episodeFiles.ConvertAll(f => f.ToResource(series, _upgradableSpecification, _formatCalculator)));
+            return Accepted(episodeFiles.ConvertAll(f => f.ToResource(series, _upgradableSpecification, _formatCalculator, _configService.CopyUsingSymlinks, _diskProvider)));
         }
 
         [RestDeleteById]
@@ -207,7 +215,7 @@ namespace Sonarr.Api.V3.EpisodeFiles
 
             _mediaFileService.Update(episodeFiles);
             var series = _seriesService.GetSeries(episodeFiles.First().SeriesId);
-            return Accepted(episodeFiles.ConvertAll(f => f.ToResource(series, _upgradableSpecification, _formatCalculator)));
+            return Accepted(episodeFiles.ConvertAll(f => f.ToResource(series, _upgradableSpecification, _formatCalculator, _configService.CopyUsingSymlinks, _diskProvider)));
         }
 
         [NonAction]

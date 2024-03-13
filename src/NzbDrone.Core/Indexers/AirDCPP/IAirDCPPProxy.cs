@@ -1,7 +1,7 @@
+using System.Collections.Generic;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Download.Clients.AirDCPP;
 using NzbDrone.Core.Indexers.AirDCPP.Responses;
-using System.Collections.Generic;
 
 namespace NzbDrone.Core.Indexers.AirDCPP
 {

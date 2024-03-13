@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using NzbDrone.Common.Disk;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.DecisionEngine.Specifications;
 using NzbDrone.Core.Languages;
@@ -60,7 +61,12 @@ namespace Sonarr.Api.V3.EpisodeFiles
             };
         }
 
-        public static EpisodeFileResource ToResource(this EpisodeFile model, NzbDrone.Core.Tv.Series series, IUpgradableSpecification upgradableSpecification, ICustomFormatCalculationService formatCalculationService)
+        public static EpisodeFileResource ToResource(this EpisodeFile model,
+            NzbDrone.Core.Tv.Series series,
+            IUpgradableSpecification upgradableSpecification,
+            ICustomFormatCalculationService formatCalculationService,
+            bool resolveSymlinks,
+            IDiskProvider diskProvider)
         {
             if (model == null)
             {
@@ -71,6 +77,13 @@ namespace Sonarr.Api.V3.EpisodeFiles
             var customFormats = formatCalculationService?.ParseCustomFormat(model, model.Series);
             var customFormatScore = series?.QualityProfile?.Value?.CalculateCustomFormatScore(customFormats) ?? 0;
 
+            var fullPath = Path.Combine(series.Path, model.RelativePath);
+
+            if (resolveSymlinks)
+            {
+                fullPath = diskProvider.GetRealPath(fullPath);
+            }
+
             return new EpisodeFileResource
             {
                 Id = model.Id,
@@ -78,7 +91,7 @@ namespace Sonarr.Api.V3.EpisodeFiles
                 SeriesId = model.SeriesId,
                 SeasonNumber = model.SeasonNumber,
                 RelativePath = model.RelativePath,
-                Path = Path.Combine(series.Path, model.RelativePath),
+                Path = fullPath,
                 Size = model.Size,
                 DateAdded = model.DateAdded,
                 SceneName = model.SceneName,

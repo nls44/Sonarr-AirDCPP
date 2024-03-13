@@ -269,6 +269,22 @@ class MediaManagement extends Component {
                         isAdvanced={true}
                         size={sizes.MEDIUM}
                       >
+                        <FormLabel>Use Symlinks instead of Copy</FormLabel>
+
+                        <FormInputGroup
+                          type={inputTypes.CHECK}
+                          name="copyUsingSymlinks"
+                          helpText="Use symlinks to keep the original files intact. Use in combination with a path mapping that maps to the location of the extracted files (such as a rar2fs mount)"
+                          onChange={onInputChange}
+                          {...settings.copyUsingSymlinks}
+                        />
+                      </FormGroup>
+
+                      <FormGroup
+                        advancedSettings={advancedSettings}
+                        isAdvanced={true}
+                        size={sizes.MEDIUM}
+                      >
                         <FormLabel>{translate('ImportUsingScript')}</FormLabel>
 
                         <FormInputGroup
@@ -298,23 +314,6 @@ class MediaManagement extends Component {
                             />
                           </FormGroup> : null
                       }
-
-                      <FormGroup
-                        advancedSettings={advancedSettings}
-                        isAdvanced={true}
-                        size={sizes.MEDIUM}
-                      >
-                        <FormLabel>Use Symlinks instead of Copy</FormLabel>
-
-                        <FormInputGroup
-                          type={inputTypes.CHECK}
-                          name="copyUsingSymlinks"
-                          helpText="Use symlinks to keep the original files intact. Use in combination with a path mapping that maps to the location of the extracted files (such as a rar2fs mount)"
-                          helpTextWarning="WARNING: experimental support!"
-                          onChange={onInputChange}
-                          {...settings.copyUsingSymlinks}
-                        />
-                      </FormGroup>
 
                       <FormGroup size={sizes.MEDIUM}>
                         <FormLabel>{translate('ImportExtraFiles')}</FormLabel>

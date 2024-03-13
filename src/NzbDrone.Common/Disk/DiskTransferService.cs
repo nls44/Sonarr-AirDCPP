@@ -324,7 +324,6 @@ namespace NzbDrone.Common.Disk
                     return TransferMode.SymLink;
                 }
             }
-
             else if (mode.HasFlag(TransferMode.HardLink))
             {
                 var createdHardlink = _diskProvider.TryCreateHardLink(sourcePath, targetPath);
