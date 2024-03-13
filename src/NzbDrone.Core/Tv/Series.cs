@@ -23,7 +23,14 @@ namespace NzbDrone.Core.Tv
         public int TvRageId { get; set; }
         public int TvMazeId { get; set; }
         public string ImdbId { get; set; }
-        public string Title { get; set; }
+        private string _title;
+        public string Title
+        {
+            get => !string.IsNullOrEmpty(CustomTitle) ? CustomTitle : _title;
+            set => _title = value;
+        }
+
+        public string CustomTitle { get; set; }
         public string CleanTitle { get; set; }
         public string SortTitle { get; set; }
         public SeriesStatusType Status { get; set; }
@@ -67,6 +74,7 @@ namespace NzbDrone.Core.Tv
             TvdbId = otherSeries.TvdbId;
 
             Seasons = otherSeries.Seasons;
+            CustomTitle = otherSeries.CustomTitle;
             Path = otherSeries.Path;
             QualityProfileId = otherSeries.QualityProfileId;
 
