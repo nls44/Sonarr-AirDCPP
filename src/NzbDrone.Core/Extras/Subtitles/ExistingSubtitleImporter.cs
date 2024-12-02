@@ -4,8 +4,8 @@ using System.Linq;
 using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Extras.Files;
+using NzbDrone.Core.Languages;
 using NzbDrone.Core.MediaFiles.EpisodeImport.Aggregation;
-using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Tv;
 
@@ -29,12 +29,12 @@ namespace NzbDrone.Core.Extras.Subtitles
 
         public override int Order => 1;
 
-        public override IEnumerable<ExtraFile> ProcessFiles(Series series, List<string> filesOnDisk, List<string> importedFiles)
+        public override IEnumerable<ExtraFile> ProcessFiles(Series series, List<string> filesOnDisk, List<string> importedFiles, string fileNameBeforeRename)
         {
             _logger.Debug("Looking for existing subtitle files in {0}", series.Path);
 
             var subtitleFiles = new List<SubtitleFile>();
-            var filterResult = FilterAndClean(series, filesOnDisk, importedFiles);
+            var filterResult = FilterAndClean(series, filesOnDisk, importedFiles, fileNameBeforeRename is not null);
 
             foreach (var possibleSubtitleFile in filterResult.FilesOnDisk)
             {
@@ -46,7 +46,8 @@ namespace NzbDrone.Core.Extras.Subtitles
                     {
                         FileEpisodeInfo = Parser.Parser.ParsePath(possibleSubtitleFile),
                         Series = series,
-                        Path = possibleSubtitleFile
+                        Path = possibleSubtitleFile,
+                        FileNameBeforeRename = fileNameBeforeRename
                     };
 
                     try
@@ -71,15 +72,19 @@ namespace NzbDrone.Core.Extras.Subtitles
                         continue;
                     }
 
+                    var firstEpisode = localEpisode.Episodes.First();
+
                     var subtitleFile = new SubtitleFile
                                        {
                                            SeriesId = series.Id,
                                            SeasonNumber = localEpisode.SeasonNumber,
-                                           EpisodeFileId = localEpisode.Episodes.First().EpisodeFileId,
+                                           EpisodeFileId = firstEpisode.EpisodeFileId,
                                            RelativePath = series.Path.GetRelativePath(possibleSubtitleFile),
-                                           Language = LanguageParser.ParseSubtitleLanguage(possibleSubtitleFile),
-                                           LanguageTags = LanguageParser.ParseLanguageTags(possibleSubtitleFile),
-                                           Extension = extension
+                                           Language = localEpisode.SubtitleInfo?.Language ?? Language.Unknown,
+                                           LanguageTags = localEpisode.SubtitleInfo?.LanguageTags ?? new List<string>(),
+                                           Title = localEpisode.SubtitleInfo?.Title,
+                                           Extension = extension,
+                                           Copy = localEpisode.SubtitleInfo?.Copy ?? 0
                                        };
 
                     subtitleFiles.Add(subtitleFile);

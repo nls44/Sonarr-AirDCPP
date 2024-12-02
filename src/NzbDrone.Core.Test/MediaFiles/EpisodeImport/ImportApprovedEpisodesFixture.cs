@@ -6,8 +6,9 @@ using FluentAssertions;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Disk;
-using NzbDrone.Core.DecisionEngine;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Download;
+using NzbDrone.Core.History;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.EpisodeImport;
 using NzbDrone.Core.MediaFiles.Events;
@@ -45,9 +46,10 @@ namespace NzbDrone.Core.Test.MediaFiles.EpisodeImport
             var episodes = Builder<Episode>.CreateListOfSize(5)
                                            .Build();
 
-            _rejectedDecisions.Add(new ImportDecision(new LocalEpisode(), new Rejection("Rejected!")));
-            _rejectedDecisions.Add(new ImportDecision(new LocalEpisode(), new Rejection("Rejected!")));
-            _rejectedDecisions.Add(new ImportDecision(new LocalEpisode(), new Rejection("Rejected!")));
+            _rejectedDecisions.Add(new ImportDecision(new LocalEpisode(), new ImportRejection(ImportRejectionReason.Unknown, "Rejected!")));
+            _rejectedDecisions.Add(new ImportDecision(new LocalEpisode(), new ImportRejection(ImportRejectionReason.Unknown, "Rejected!")));
+            _rejectedDecisions.Add(new ImportDecision(new LocalEpisode(), new ImportRejection(ImportRejectionReason.Unknown, "Rejected!")));
+            _rejectedDecisions.ForEach(r => r.LocalEpisode.FileEpisodeInfo = new ParsedEpisodeInfo());
 
             foreach (var episode in episodes)
             {
@@ -58,7 +60,8 @@ namespace NzbDrone.Core.Test.MediaFiles.EpisodeImport
                                                    Episodes = new List<Episode> { episode },
                                                    Path = Path.Combine(series.Path, "30 Rock - S01E01 - Pilot.avi"),
                                                    Quality = new QualityModel(Quality.Bluray720p),
-                                                   ReleaseGroup = "DRONE"
+                                                   ReleaseGroup = "DRONE",
+                                                   FileEpisodeInfo = new ParsedEpisodeInfo()
                                                }));
             }
 
@@ -66,9 +69,13 @@ namespace NzbDrone.Core.Test.MediaFiles.EpisodeImport
                   .Setup(s => s.UpgradeEpisodeFile(It.IsAny<EpisodeFile>(), It.IsAny<LocalEpisode>(), It.IsAny<bool>()))
                   .Returns(new EpisodeFileMoveResult());
 
+            Mocker.GetMock<IHistoryService>()
+                .Setup(x => x.FindByDownloadId(It.IsAny<string>()))
+                .Returns(new List<EpisodeHistory>());
+
             _downloadClientItem = Builder<DownloadClientItem>.CreateNew()
-                                                             .With(d => d.OutputPath = new OsPath(outputPath))
-                                                             .Build();
+                .With(d => d.OutputPath = new OsPath(outputPath))
+                .Build();
         }
 
         private void GivenNewDownload()

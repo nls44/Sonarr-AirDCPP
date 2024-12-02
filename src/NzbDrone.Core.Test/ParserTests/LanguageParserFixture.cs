@@ -41,6 +41,8 @@ namespace NzbDrone.Core.Test.ParserTests
         [TestCase("Title.the.Italian.Series.S01E01.The.Family.720p.HDTV.x264-FTP")]
         [TestCase("Title.the.Italy.Series.S02E01.720p.HDTV.x264-TLA")]
         [TestCase("Series Title - S01E01 - Pilot.en.sub")]
+        [TestCase("Series.Title.S01E01.SUBFRENCH.1080p.WEB.x264-GROUP")]
+
         public void should_parse_language_unknown(string postTitle)
         {
             var result = LanguageParser.ParseLanguages(postTitle);
@@ -64,6 +66,7 @@ namespace NzbDrone.Core.Test.ParserTests
         [TestCase("Title.S01.720p.VFF.WEB-DL.AAC2.0.H.264-BTN")]
         [TestCase("Title.S01.720p.VFQ.WEB-DL.AAC2.0.H.264-BTN")]
         [TestCase("Title.S01.720p.TRUEFRENCH.WEB-DL.AAC2.0.H.264-BTN")]
+        [TestCase("Series In The Middle S01 Multi VFI VO 1080p WEB x265 HEVC AAC 5.1-Papaya")]
         public void should_parse_language_french(string postTitle)
         {
             var result = LanguageParser.ParseLanguages(postTitle);
@@ -427,6 +430,74 @@ namespace NzbDrone.Core.Test.ParserTests
             result.Languages.Should().Contain(Language.German);
             result.Languages.Should().Contain(Language.Original);
             result.Languages.Should().Contain(Language.English);
+        }
+
+        [TestCase("Series.Title.S01E01.Original.1080P.WEB.H264-RlsGrp")]
+        [TestCase("Series.Title.S01E01.Orig.1080P.WEB.H264-RlsGrp")]
+        [TestCase("Series / S1E1-10 of 10 [2023, HEVC, HDR10, Dolby Vision, WEB-DL 2160p] [Hybrid] 3 XX + Original")]
+        public void should_parse_original_title_from_release_name(string postTitle)
+        {
+            var result = Parser.Parser.ParseTitle(postTitle);
+            result.Languages.Count.Should().Be(1);
+            result.Languages.Should().Contain(Language.Original);
+        }
+
+        [TestCase("Остання серія (Сезон 1) / The Last Series (Season 1) (2024) WEB-DLRip-AVC 2xUkr/Eng | Sub Ukr/Eng")]
+        [TestCase("Справжня серія (Сезон 1-3) / True Series (Season 1-3) (2014-2019) BDRip-AVC 3xUkr/Eng | Ukr/Eng")]
+        [TestCase("Серія (Сезон 1-3) / The Series (Seasons 1-3) (2019-2022) BDRip-AVC 4xUkr/Eng | Sub 2xUkr/Eng")]
+        public void should_parse_english_and_ukranian(string postTitle)
+        {
+            var result = Parser.Parser.ParseTitle(postTitle);
+            result.Languages.Count.Should().Be(2);
+            result.Languages.Should().Contain(Language.Ukrainian);
+            result.Languages.Should().Contain(Language.English);
+        }
+
+        [TestCase("Серія (Сезон 1, серії 01-26 із 51) / Seri (Season 1, episodes 01-26) (2018) WEBRip-AVC 2Ukr/Tur")]
+        public void should_parse_turkish_and_ukranian(string postTitle)
+        {
+            var result = Parser.Parser.ParseTitle(postTitle);
+            result.Languages.Count.Should().Be(2);
+            result.Languages.Should().Contain(Language.Ukrainian);
+            result.Languages.Should().Contain(Language.Turkish);
+        }
+
+        [TestCase("Name (2020) - S01E20 - [AAC 2.0].testtitle.default.eng.forced.ass", new[] { "default", "forced" }, "testtitle", "English")]
+        [TestCase("Name (2020) - S01E20 - [AAC 2.0].eng.default.testtitle.forced.ass", new[] { "default", "forced" }, "testtitle", "English")]
+        [TestCase("Name (2020) - S01E20 - [AAC 2.0].default.eng.testtitle.forced.ass", new[] { "default", "forced" }, "testtitle", "English")]
+        [TestCase("Name (2020) - S01E20 - [AAC 2.0].testtitle.forced.eng.ass", new[] { "forced" }, "testtitle", "English")]
+        [TestCase("Name (2020) - S01E20 - [AAC 2.0].eng.forced.testtitle.ass", new[] { "forced" }, "testtitle", "English")]
+        [TestCase("Name (2020) - S01E20 - [AAC 2.0].forced.eng.testtitle.ass", new[] { "forced" }, "testtitle", "English")]
+        [TestCase("Name (2020) - S01E20 - [AAC 2.0].testtitle.default.fra.forced.ass", new[] { "default", "forced" }, "testtitle", "French")]
+        [TestCase("Name (2020) - S01E20 - [AAC 2.0].fra.default.testtitle.forced.ass", new[] { "default", "forced" }, "testtitle", "French")]
+        [TestCase("Name (2020) - S01E20 - [AAC 2.0].default.fra.testtitle.forced.ass", new[] { "default", "forced" }, "testtitle", "French")]
+        [TestCase("Name (2020) - S01E20 - [AAC 2.0].testtitle.forced.fra.ass", new[] { "forced" }, "testtitle", "French")]
+        [TestCase("Name (2020) - S01E20 - [AAC 2.0].fra.forced.testtitle.ass", new[] { "forced" }, "testtitle", "French")]
+        [TestCase("Name (2020) - S01E20 - [AAC 2.0].forced.fra.testtitle.ass", new[] { "forced" }, "testtitle", "French")]
+        [TestCase("Name (2020) - S01E20 - [AAC 2.0].ru-something-else.srt", new string[0], "something-else", "Russian")]
+        [TestCase("Name (2020) - S01E20 - [AAC 2.0].Full Subtitles.eng.ass", new string[0], "Full Subtitles", "English")]
+        [TestCase("Name (2020) - S01E20 - [AAC 2.0].mytitle - 1.en.ass", new string[0], "mytitle", "English")]
+        [TestCase("Name (2020) - S01E20 - [AAC 2.0].mytitle 1.en.ass", new string[0], "mytitle 1", "English")]
+        [TestCase("Name (2020) - S01E20 - [AAC 2.0].mytitle.en.ass", new string[0], "mytitle", "English")]
+        public void should_parse_title_and_tags(string postTitle, string[] expectedTags, string expectedTitle, string expectedLanguage)
+        {
+            var subtitleTitleInfo = LanguageParser.ParseSubtitleLanguageInformation(postTitle);
+
+            subtitleTitleInfo.LanguageTags.Should().BeEquivalentTo(expectedTags);
+            subtitleTitleInfo.Title.Should().BeEquivalentTo(expectedTitle);
+            subtitleTitleInfo.Language.Should().BeEquivalentTo((Language)expectedLanguage);
+        }
+
+        [TestCase("Name (2020) - S01E20 - [AAC 2.0].default.forced.ass")]
+        [TestCase("Name (2020) - S01E20 - [AAC 2.0].default.ass")]
+        [TestCase("Name (2020) - S01E20 - [AAC 2.0].ass")]
+        [TestCase("Name (2020) - S01E20 - [AAC 2.0].testtitle.ass")]
+        public void should_not_parse_false_title(string postTitle)
+        {
+            var subtitleTitleInfo = LanguageParser.ParseSubtitleLanguageInformation(postTitle);
+            subtitleTitleInfo.Language.Should().Be(Language.Unknown);
+            subtitleTitleInfo.LanguageTags.Should().BeEmpty();
+            subtitleTitleInfo.RawTitle.Should().BeNull();
         }
     }
 }

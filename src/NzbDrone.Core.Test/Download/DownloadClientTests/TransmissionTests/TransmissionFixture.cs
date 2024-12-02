@@ -13,6 +13,14 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.TransmissionTests
     [TestFixture]
     public class TransmissionFixture : TransmissionFixtureBase<Transmission>
     {
+        [SetUp]
+        public void Setup_Transmission()
+        {
+            Mocker.GetMock<ITransmissionProxy>()
+                .Setup(v => v.GetClientVersion(It.IsAny<TransmissionSettings>(), It.IsAny<bool>()))
+                .Returns("4.0.6");
+        }
+
         [Test]
         public void queued_item_should_have_required_properties()
         {
@@ -49,10 +57,13 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.TransmissionTests
         }
 
         [Test]
-        public void magnet_download_should_not_return_the_item()
+        public void magnet_download_should_be_returned_as_queued()
         {
             PrepareClientToReturnMagnetItem();
-            Subject.GetItems().Count().Should().Be(0);
+
+            var item = Subject.GetItems().Single();
+
+            item.Status.Should().Be(DownloadItemStatus.Queued);
         }
 
         [Test]
@@ -269,7 +280,7 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.TransmissionTests
         public void should_only_check_version_number(string version)
         {
             Mocker.GetMock<ITransmissionProxy>()
-                  .Setup(s => s.GetClientVersion(It.IsAny<TransmissionSettings>()))
+                  .Setup(s => s.GetClientVersion(It.IsAny<TransmissionSettings>(), true))
                   .Returns(version);
 
             Subject.Test().IsValid.Should().BeTrue();

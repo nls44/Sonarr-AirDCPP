@@ -7,6 +7,7 @@ using NzbDrone.Common.Composition;
 using NzbDrone.Common.Serializer;
 using NzbDrone.Common.TPL;
 using NzbDrone.Core.Datastore.Events;
+using NzbDrone.Core.MediaFiles.EpisodeImport.Manual;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.ProgressMessaging;
@@ -50,7 +51,7 @@ namespace Sonarr.Api.V3.Commands
         [RestPostById]
         [Consumes("application/json")]
         [Produces("application/json")]
-        public ActionResult<CommandResource> StartCommand(CommandResource commandResource)
+        public ActionResult<CommandResource> StartCommand([FromBody] CommandResource commandResource)
         {
             var commandType =
                 _knownTypes.GetImplementations(typeof(Command))
@@ -61,15 +62,18 @@ namespace Sonarr.Api.V3.Commands
             using (var reader = new StreamReader(Request.Body))
             {
                 var body = reader.ReadToEnd();
+                var priority = commandType == typeof(ManualImportCommand)
+                    ? CommandPriority.High
+                    : CommandPriority.Normal;
 
-                dynamic command = STJson.Deserialize(body, commandType);
+                var command = STJson.Deserialize(body, commandType) as Command;
 
-                command.Trigger = CommandTrigger.Manual;
                 command.SuppressMessages = !command.SendUpdatesToClient;
                 command.SendUpdatesToClient = true;
                 command.ClientUserAgent = Request.Headers["UserAgent"];
 
-                var trackedCommand = _commandQueueManager.Push(command, CommandPriority.Normal, CommandTrigger.Manual);
+                var trackedCommand = _commandQueueManager.Push(command, priority, CommandTrigger.Manual);
+
                 return Created(trackedCommand.Id);
             }
         }

@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -61,6 +62,13 @@ namespace NzbDrone.Core.Organizer
 
             return ruleBuilder.SetValidator(new IllegalCharactersValidator());
         }
+
+        public static IRuleBuilderOptions<T, string> ValidCustomColonReplacement<T>(this IRuleBuilder<T, string> ruleBuilder)
+        {
+            ruleBuilder.SetValidator(new IllegalColonCharactersValidator());
+
+            return ruleBuilder.SetValidator(new IllegalCharactersValidator());
+        }
     }
 
     public class ValidStandardEpisodeFormatValidator : PropertyValidator
@@ -75,6 +83,7 @@ namespace NzbDrone.Core.Organizer
             }
 
             return FileNameBuilder.SeasonEpisodePatternRegex.IsMatch(value) ||
+                   (FileNameBuilder.SeasonRegex.IsMatch(value) && FileNameBuilder.EpisodeRegex.IsMatch(value)) ||
                    FileNameValidation.OriginalTokenRegex.IsMatch(value);
         }
     }
@@ -91,6 +100,7 @@ namespace NzbDrone.Core.Organizer
             }
 
             return FileNameBuilder.SeasonEpisodePatternRegex.IsMatch(value) ||
+                   (FileNameBuilder.SeasonRegex.IsMatch(value) && FileNameBuilder.EpisodeRegex.IsMatch(value)) ||
                    FileNameBuilder.AirDateRegex.IsMatch(value) ||
                    FileNameValidation.OriginalTokenRegex.IsMatch(value);
         }
@@ -109,6 +119,7 @@ namespace NzbDrone.Core.Organizer
             }
 
             return FileNameBuilder.SeasonEpisodePatternRegex.IsMatch(value) ||
+                   (FileNameBuilder.SeasonRegex.IsMatch(value) && FileNameBuilder.EpisodeRegex.IsMatch(value)) ||
                    FileNameBuilder.AbsoluteEpisodePatternRegex.IsMatch(value) ||
                    FileNameValidation.OriginalTokenRegex.IsMatch(value);
         }
@@ -129,6 +140,34 @@ namespace NzbDrone.Core.Organizer
             }
 
             var invalidCharacters = InvalidPathChars.Where(i => value!.IndexOf(i) >= 0).ToList();
+
+            if (invalidCharacters.Any())
+            {
+                context.MessageFormatter.AppendArgument("InvalidCharacters", string.Join("", invalidCharacters));
+                return false;
+            }
+
+            return true;
+        }
+    }
+
+    public class IllegalColonCharactersValidator : PropertyValidator
+    {
+        private static readonly string[] InvalidPathChars = FileNameBuilder.BadCharacters.Concat(new[] { ":" }).ToArray();
+
+        protected override string GetDefaultMessageTemplate() => "Contains illegal characters: {InvalidCharacters}";
+
+        protected override bool IsValid(PropertyValidatorContext context)
+        {
+            var value = context.PropertyValue as string;
+
+            if (value.IsNullOrWhiteSpace())
+            {
+                return true;
+            }
+
+            var invalidCharacters = InvalidPathChars.Where(i => value!.IndexOf(i, StringComparison.Ordinal) >= 0).ToList();
+
             if (invalidCharacters.Any())
             {
                 context.MessageFormatter.AppendArgument("InvalidCharacters", string.Join("", invalidCharacters));

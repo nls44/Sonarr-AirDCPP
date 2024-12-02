@@ -8,6 +8,7 @@ using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Localization;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
+using NzbDrone.Core.Tv;
 using NzbDrone.Core.Validation;
 
 namespace NzbDrone.Core.ImportLists.Sonarr
@@ -31,10 +32,10 @@ namespace NzbDrone.Core.ImportLists.Sonarr
             _sonarrV3Proxy = sonarrV3Proxy;
         }
 
-        public override IList<ImportListItemInfo> Fetch()
+        public override ImportListFetchResult Fetch()
         {
             var series = new List<ImportListItemInfo>();
-
+            var anyFailure = false;
             try
             {
                 var remoteSeries = _sonarrV3Proxy.GetSeries(Settings);
@@ -61,11 +62,22 @@ namespace NzbDrone.Core.ImportLists.Sonarr
                         continue;
                     }
 
-                    series.Add(new ImportListItemInfo
+                    var info = new ImportListItemInfo
                     {
                         TvdbId = item.TvdbId,
                         Title = item.Title
-                    });
+                    };
+
+                    if (Settings.SyncSeasonMonitoring)
+                    {
+                        info.Seasons = item.Seasons.Select(s => new Season
+                        {
+                            SeasonNumber = s.SeasonNumber,
+                            Monitored = s.Monitored
+                        }).ToList();
+                    }
+
+                    series.Add(info);
                 }
 
                 _importListStatusService.RecordSuccess(Definition.Id);
@@ -75,9 +87,10 @@ namespace NzbDrone.Core.ImportLists.Sonarr
                 _logger.Debug(ex, "Failed to fetch data for list {0} ({1})", Definition.Name, Name);
 
                 _importListStatusService.RecordFailure(Definition.Id);
+                anyFailure = true;
             }
 
-            return CleanupListItems(series);
+            return new ImportListFetchResult(CleanupListItems(series), anyFailure);
         }
 
         public override object RequestAction(string action, IDictionary<string, string> query)

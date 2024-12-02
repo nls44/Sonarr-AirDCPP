@@ -2,7 +2,6 @@ using FluentValidation;
 using Newtonsoft.Json;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Annotations;
-using NzbDrone.Core.ThingiProvider;
 using NzbDrone.Core.Validation;
 
 namespace NzbDrone.Core.Notifications.Emby
@@ -15,16 +14,18 @@ namespace NzbDrone.Core.Notifications.Emby
             RuleFor(c => c.ApiKey).NotEmpty();
             RuleFor(c => c.MapFrom).NotEmpty().Unless(c => c.MapTo.IsNullOrWhiteSpace());
             RuleFor(c => c.MapTo).NotEmpty().Unless(c => c.MapFrom.IsNullOrWhiteSpace());
+            RuleFor(c => c.UrlBase).ValidUrlBase();
         }
     }
 
-    public class MediaBrowserSettings : IProviderConfig
+    public class MediaBrowserSettings : NotificationSettingsBase<MediaBrowserSettings>
     {
-        private static readonly MediaBrowserSettingsValidator Validator = new MediaBrowserSettingsValidator();
+        private static readonly MediaBrowserSettingsValidator Validator = new ();
 
         public MediaBrowserSettings()
         {
             Port = 8096;
+            UpdateLibrary = true;
         }
 
         [FieldDefinition(0, Label = "Host")]
@@ -37,29 +38,34 @@ namespace NzbDrone.Core.Notifications.Emby
         [FieldToken(TokenField.HelpText, "UseSsl", "serviceName", "Emby/Jellyfin")]
         public bool UseSsl { get; set; }
 
-        [FieldDefinition(3, Label = "ApiKey", Privacy = PrivacyLevel.ApiKey)]
+        [FieldDefinition(3, Label = "UrlBase", Type = FieldType.Textbox, Advanced = true, HelpText = "ConnectionSettingsUrlBaseHelpText")]
+        [FieldToken(TokenField.HelpText, "UrlBase", "connectionName", "Emby/Jellyfin")]
+        [FieldToken(TokenField.HelpText, "UrlBase", "url", "http://[host]:[port]/[urlBase]/mediabrowser")]
+        public string UrlBase { get; set; }
+
+        [FieldDefinition(4, Label = "ApiKey", Privacy = PrivacyLevel.ApiKey)]
         public string ApiKey { get; set; }
 
-        [FieldDefinition(4, Label = "NotificationsEmbySettingsSendNotifications", HelpText = "NotificationsEmbySettingsSendNotificationsHelpText", Type = FieldType.Checkbox)]
+        [FieldDefinition(5, Label = "NotificationsEmbySettingsSendNotifications", HelpText = "NotificationsEmbySettingsSendNotificationsHelpText", Type = FieldType.Checkbox)]
         public bool Notify { get; set; }
 
-        [FieldDefinition(5, Label = "NotificationsSettingsUpdateLibrary", HelpText = "NotificationsEmbySettingsUpdateLibraryHelpText", Type = FieldType.Checkbox)]
+        [FieldDefinition(6, Label = "NotificationsSettingsUpdateLibrary", HelpText = "NotificationsEmbySettingsUpdateLibraryHelpText", Type = FieldType.Checkbox)]
         public bool UpdateLibrary { get; set; }
 
-        [FieldDefinition(6, Label = "NotificationsSettingsUpdateMapPathsFrom", HelpText = "NotificationsSettingsUpdateMapPathsFromHelpText", Type = FieldType.Textbox, Advanced = true)]
+        [FieldDefinition(7, Label = "NotificationsSettingsUpdateMapPathsFrom", HelpText = "NotificationsSettingsUpdateMapPathsFromSeriesHelpText", Type = FieldType.Textbox, Advanced = true)]
         [FieldToken(TokenField.HelpText, "NotificationsSettingsUpdateMapPathsFrom", "serviceName", "Emby/Jellyfin")]
         public string MapFrom { get; set; }
 
-        [FieldDefinition(7, Label = "NotificationsSettingsUpdateMapPathsTo", HelpText = "NotificationsSettingsUpdateMapPathsToHelpText", Type = FieldType.Textbox, Advanced = true)]
+        [FieldDefinition(8, Label = "NotificationsSettingsUpdateMapPathsTo", HelpText = "NotificationsSettingsUpdateMapPathsToSeriesHelpText", Type = FieldType.Textbox, Advanced = true)]
         [FieldToken(TokenField.HelpText, "NotificationsSettingsUpdateMapPathsTo", "serviceName", "Emby/Jellyfin")]
         public string MapTo { get; set; }
 
         [JsonIgnore]
-        public string Address => $"{Host.ToUrlHost()}:{Port}";
+        public string Address => $"{Host.ToUrlHost()}:{Port}{UrlBase}";
 
         public bool IsValid => !string.IsNullOrWhiteSpace(Host) && Port > 0;
 
-        public NzbDroneValidationResult Validate()
+        public override NzbDroneValidationResult Validate()
         {
             return new NzbDroneValidationResult(Validator.Validate(this));
         }

@@ -43,6 +43,13 @@ namespace NzbDrone.Core.Notifications.Email
             SendEmail(Settings, EPISODE_DOWNLOADED_TITLE_BRANDED, body);
         }
 
+        public override void OnImportComplete(ImportCompleteMessage message)
+        {
+            var body = $"All expected episode files in {message.Message} downloaded and sorted.";
+
+            SendEmail(Settings, IMPORT_COMPLETE_TITLE, body);
+        }
+
         public override void OnEpisodeFileDelete(EpisodeDeleteMessage deleteMessage)
         {
             var body = $"{deleteMessage.Message} deleted.";
@@ -134,19 +141,16 @@ namespace NzbDrone.Core.Notifications.Email
             using var client = new SmtpClient();
             client.Timeout = 10000;
 
-            var serverOption = SecureSocketOptions.Auto;
+            var useEncyption = (EmailEncryptionType)settings.UseEncryption;
 
-            if (settings.RequireEncryption)
+            var serverOption = useEncyption switch
             {
-                if (settings.Port == 465)
-                {
-                    serverOption = SecureSocketOptions.SslOnConnect;
-                }
-                else
-                {
-                    serverOption = SecureSocketOptions.StartTls;
-                }
-            }
+                EmailEncryptionType.Always => settings.Port == 465
+                    ? SecureSocketOptions.SslOnConnect
+                    : SecureSocketOptions.StartTls,
+                EmailEncryptionType.Never => SecureSocketOptions.None,
+                _ => SecureSocketOptions.Auto
+            };
 
             client.ServerCertificateValidationCallback = _certificateValidationService.ShouldByPassValidationError;
 

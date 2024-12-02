@@ -20,6 +20,7 @@ namespace NzbDrone.Core.Download.Clients.Deluge
     public class Deluge : TorrentClientBase<DelugeSettings>
     {
         private readonly IDelugeProxy _proxy;
+        private bool _hasAttemptedReconnecting;
 
         public Deluge(IDelugeProxy proxy,
                       ITorrentFileInfoReader torrentFileInfoReader,
@@ -124,11 +125,15 @@ namespace NzbDrone.Core.Download.Clients.Deluge
             }
 
             var items = new List<DownloadClientItem>();
+            var ignoredCount = 0;
 
             foreach (var torrent in torrents)
             {
-                if (torrent.Hash == null)
+                // Ignore torrents without a hash or name, but track to log a single warning
+                // for all invalid torrents as well as reconnect to the Daemon.
+                if (torrent.Hash.IsNullOrWhiteSpace() || torrent.Name.IsNullOrWhiteSpace())
                 {
+                    ignoredCount++;
                     continue;
                 }
 
@@ -137,7 +142,7 @@ namespace NzbDrone.Core.Download.Clients.Deluge
                 item.Title = torrent.Name;
                 item.Category = Settings.TvCategory;
 
-                item.DownloadClientInfo = DownloadClientItemClientInfo.FromDownloadClient(this);
+                item.DownloadClientInfo = DownloadClientItemClientInfo.FromDownloadClient(this, Settings.TvImportedCategory.IsNotNullOrWhiteSpace());
 
                 var outputPath = _remotePathMappingService.RemapRemoteToLocal(Settings.Host, new OsPath(torrent.DownloadPath));
                 item.OutputPath = outputPath + torrent.Name;
@@ -181,12 +186,29 @@ namespace NzbDrone.Core.Download.Clients.Deluge
                 // Here we detect if Deluge is managing the torrent and whether the seed criteria has been met.
                 // This allows Sonarr to delete the torrent as appropriate.
                 item.CanMoveFiles = item.CanBeRemoved =
+                    item.DownloadClientInfo.RemoveCompletedDownloads &&
                     torrent.IsAutoManaged &&
                     torrent.StopAtRatio &&
                     torrent.Ratio >= torrent.StopRatio &&
                     torrent.State == DelugeTorrentStatus.Paused;
 
                 items.Add(item);
+            }
+
+            if (ignoredCount > 0 && _hasAttemptedReconnecting)
+            {
+                if (_hasAttemptedReconnecting)
+                {
+                    _logger.Warn("{0} torrent(s) were ignored because they did not have a hash or title. Deluge may have disconnected from it's daemon. If you continue to see this error, check Deluge for invalid torrents.", ignoredCount);
+                }
+                else
+                {
+                    _proxy.ReconnectToDaemon(Settings);
+                }
+            }
+            else
+            {
+                _hasAttemptedReconnecting = false;
             }
 
             return items;
@@ -201,9 +223,18 @@ namespace NzbDrone.Core.Download.Clients.Deluge
         {
             var config = _proxy.GetConfig(Settings);
             var label = _proxy.GetLabelOptions(Settings);
+
             OsPath destDir;
 
-            if (label != null && label.ApplyMoveCompleted && label.MoveCompleted)
+            if (Settings.CompletedDirectory.IsNotNullOrWhiteSpace())
+            {
+                destDir = new OsPath(Settings.CompletedDirectory);
+            }
+            else if (Settings.DownloadDirectory.IsNotNullOrWhiteSpace())
+            {
+                destDir = new OsPath(Settings.DownloadDirectory);
+            }
+            else if (label is { ApplyMoveCompleted: true, MoveCompleted: true })
             {
                 // if label exists and a label completed path exists and is enabled use it instead of global
                 destDir = new OsPath(label.MoveCompletedPath);
@@ -219,7 +250,7 @@ namespace NzbDrone.Core.Download.Clients.Deluge
 
             var status = new DownloadClientInfo
             {
-                IsLocalhost = Settings.Host == "127.0.0.1" || Settings.Host == "localhost"
+                IsLocalhost = Settings.Host is "127.0.0.1" or "localhost"
             };
 
             if (!destDir.IsEmpty)
@@ -298,9 +329,9 @@ namespace NzbDrone.Core.Download.Clients.Deluge
                 return null;
             }
 
-            var enabledPlugins = _proxy.GetEnabledPlugins(Settings);
+            var methods = _proxy.GetMethods(Settings);
 
-            if (!enabledPlugins.Contains("Label"))
+            if (!methods.Any(m => m.StartsWith("label.")))
             {
                 return new NzbDroneValidationFailure("TvCategory", _localizationService.GetLocalizedString("DownloadClientDelugeValidationLabelPluginInactive"))
                 {

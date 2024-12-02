@@ -41,31 +41,41 @@ namespace NzbDrone.Core.Download
             var blockedProviders = new HashSet<int>(_downloadClientStatusService.GetBlockedProviders().Select(v => v.ProviderId));
             var availableProviders = _downloadClientFactory.GetAvailableProviders().Where(v => v.Protocol == downloadProtocol).ToList();
 
-            if (tags != null)
+            if (!availableProviders.Any())
+            {
+                return null;
+            }
+
+            if (tags is { Count: > 0 })
             {
                 var matchingTagsClients = availableProviders.Where(i => i.Definition.Tags.Intersect(tags).Any()).ToList();
 
                 availableProviders = matchingTagsClients.Count > 0 ?
                     matchingTagsClients :
                     availableProviders.Where(i => i.Definition.Tags.Empty()).ToList();
-            }
 
-            if (!availableProviders.Any())
-            {
-                return null;
+                if (!availableProviders.Any())
+                {
+                    throw new DownloadClientUnavailableException("No download client was found without tags or a matching series tag. Please check your settings.");
+                }
             }
 
             if (indexerId > 0)
             {
                 var indexer = _indexerFactory.Find(indexerId);
 
-                if (indexer != null && indexer.DownloadClientId > 0)
+                if (indexer is { DownloadClientId: > 0 })
                 {
                     var client = availableProviders.SingleOrDefault(d => d.Definition.Id == indexer.DownloadClientId);
 
-                    if (client == null || (filterBlockedClients && blockedProviders.Contains(client.Definition.Id)))
+                    if (client == null)
                     {
-                        throw new DownloadClientUnavailableException($"Indexer specified download client is not available");
+                        throw new DownloadClientUnavailableException($"Indexer specified download client does not exist for {indexer.Name}");
+                    }
+
+                    if (filterBlockedClients && blockedProviders.Contains(client.Definition.Id))
+                    {
+                        throw new DownloadClientUnavailableException($"Indexer specified download client is not available due to recent failures for {indexer.Name}");
                     }
 
                     return client;

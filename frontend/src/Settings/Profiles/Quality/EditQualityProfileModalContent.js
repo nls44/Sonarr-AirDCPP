@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
+import Alert from 'Components/Alert';
 import Form from 'Components/Form/Form';
 import FormGroup from 'Components/Form/FormGroup';
 import FormInputGroup from 'Components/Form/FormInputGroup';
@@ -122,6 +123,7 @@ class EditQualityProfileModalContent extends Component {
       upgradeAllowed,
       cutoff,
       minFormatScore,
+      minUpgradeFormatScore,
       cutoffFormatScore,
       items,
       formatItems
@@ -152,9 +154,9 @@ class EditQualityProfileModalContent extends Component {
 
               {
                 !isFetching && !!error &&
-                  <div>
+                  <Alert kind={kinds.DANGER}>
                     {translate('AddQualityProfileError')}
-                  </div>
+                  </Alert>
               }
 
               {
@@ -241,6 +243,25 @@ class EditQualityProfileModalContent extends Component {
                                 onChange={onInputChange}
                               />
                             </FormGroup>
+                        }
+
+                        {
+                          upgradeAllowed.value && formatItems.value.length > 0 ?
+                            <FormGroup size={sizes.EXTRA_SMALL}>
+                              <FormLabel size={sizes.SMALL}>
+                                {translate('MinimumCustomFormatScoreIncrement')}
+                              </FormLabel>
+
+                              <FormInputGroup
+                                type={inputTypes.NUMBER}
+                                name="minUpgradeFormatScore"
+                                min={1}
+                                {...minUpgradeFormatScore}
+                                helpText={translate('MinimumCustomFormatScoreIncrementHelpText')}
+                                onChange={onInputChange}
+                              />
+                            </FormGroup> :
+                            null
                         }
 
                         <div className={styles.formatItemLarge}>

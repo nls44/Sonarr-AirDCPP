@@ -7,23 +7,38 @@ namespace NzbDrone.Core.MediaFiles
     {
         private static List<string> _archiveExtensions = new List<string>
         {
-            ".rar",
-            ".r00",
-            ".zip",
-            ".tar",
+            ".7z",
+            ".bz2",
             ".gz",
-            ".tar.gz"
+            ".r00",
+            ".rar",
+            ".tar.bz2",
+            ".tar.gz",
+            ".tar",
+            ".tb2",
+            ".tbz2",
+            ".tgz",
+            ".zip"
+        };
+
+        private static List<string> _dangerousExtensions = new List<string>
+        {
+            ".lnk",
+            ".ps1",
+            ".vbs",
+            ".zipx"
         };
 
         private static List<string> _executableExtensions = new List<string>
         {
-            ".exe",
             ".bat",
             ".cmd",
+            ".exe",
             ".sh"
         };
 
         public static HashSet<string> ArchiveExtensions => new HashSet<string>(_archiveExtensions, StringComparer.OrdinalIgnoreCase);
+        public static HashSet<string> DangerousExtensions => new HashSet<string>(_dangerousExtensions, StringComparer.OrdinalIgnoreCase);
         public static HashSet<string> ExecutableExtensions => new HashSet<string>(_executableExtensions, StringComparer.OrdinalIgnoreCase);
     }
 }

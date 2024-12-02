@@ -81,10 +81,15 @@ namespace NzbDrone.Core.Datastore
                   .Ignore(i => i.MinRefreshInterval)
                   .Ignore(i => i.Enable);
 
+            Mapper.Entity<ImportListItemInfo>("ImportListItems").RegisterModel()
+                   .Ignore(i => i.ImportList)
+                   .Ignore(i => i.Seasons);
+
             Mapper.Entity<NotificationDefinition>("Notifications").RegisterModel()
                   .Ignore(x => x.ImplementationName)
                   .Ignore(i => i.SupportsOnGrab)
                   .Ignore(i => i.SupportsOnDownload)
+                  .Ignore(i => i.SupportsOnImportComplete)
                   .Ignore(i => i.SupportsOnUpgrade)
                   .Ignore(i => i.SupportsOnRename)
                   .Ignore(i => i.SupportsOnSeriesAdd)
@@ -123,6 +128,7 @@ namespace NzbDrone.Core.Datastore
                   .Ignore(e => e.SeriesTitle)
                   .Ignore(e => e.Series)
                   .Ignore(e => e.HasFile)
+                  .Ignore(e => e.AbsoluteEpisodeNumberAdded)
                   .HasOne(s => s.EpisodeFile, s => s.EpisodeFileId);
 
             Mapper.Entity<QualityDefinition>("QualityDefinitions").RegisterModel()

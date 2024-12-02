@@ -1,22 +1,26 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
+import Icon from 'Components/Icon';
 import MonitorToggleButton from 'Components/MonitorToggleButton';
-import RelativeDateCellConnector from 'Components/Table/Cells/RelativeDateCellConnector';
+import RelativeDateCell from 'Components/Table/Cells/RelativeDateCell';
 import TableRowCell from 'Components/Table/Cells/TableRowCell';
 import TableRow from 'Components/Table/TableRow';
+import Popover from 'Components/Tooltip/Popover';
 import Tooltip from 'Components/Tooltip/Tooltip';
 import EpisodeFormats from 'Episode/EpisodeFormats';
 import EpisodeNumber from 'Episode/EpisodeNumber';
-import EpisodeSearchCellConnector from 'Episode/EpisodeSearchCellConnector';
-import EpisodeStatusConnector from 'Episode/EpisodeStatusConnector';
+import EpisodeSearchCell from 'Episode/EpisodeSearchCell';
+import EpisodeStatus from 'Episode/EpisodeStatus';
 import EpisodeTitleLink from 'Episode/EpisodeTitleLink';
+import IndexerFlags from 'Episode/IndexerFlags';
 import EpisodeFileLanguageConnector from 'EpisodeFile/EpisodeFileLanguageConnector';
 import MediaInfoConnector from 'EpisodeFile/MediaInfoConnector';
 import * as mediaInfoTypes from 'EpisodeFile/mediaInfoTypes';
-import { tooltipPositions } from 'Helpers/Props';
+import { icons, kinds, tooltipPositions } from 'Helpers/Props';
 import formatBytes from 'Utilities/Number/formatBytes';
 import formatCustomFormatScore from 'Utilities/Number/formatCustomFormatScore';
 import formatRuntime from 'Utilities/Number/formatRuntime';
+import translate from 'Utilities/String/translate';
 import styles from './EpisodeRow.css';
 
 class EpisodeRow extends Component {
@@ -77,6 +81,7 @@ class EpisodeRow extends Component {
       releaseGroup,
       customFormats,
       customFormatScore,
+      indexerFlags,
       alternateTitles,
       columns
     } = this.props;
@@ -142,6 +147,7 @@ class EpisodeRow extends Component {
                     episodeId={id}
                     seriesId={seriesId}
                     episodeTitle={title}
+                    episodeEntity="episodes"
                     finaleType={finaleType}
                     showOpenSeriesButton={false}
                   />
@@ -171,7 +177,7 @@ class EpisodeRow extends Component {
 
             if (name === 'airDateUtc') {
               return (
-                <RelativeDateCellConnector
+                <RelativeDateCell
                   key={name}
                   date={airDateUtc}
                 />
@@ -211,7 +217,7 @@ class EpisodeRow extends Component {
                       customFormats.length
                     )}
                     tooltip={<EpisodeFormats formats={customFormats} />}
-                    position={tooltipPositions.BOTTOM}
+                    position={tooltipPositions.LEFT}
                   />
                 </TableRowCell>
               );
@@ -322,13 +328,31 @@ class EpisodeRow extends Component {
               );
             }
 
+            if (name === 'indexerFlags') {
+              return (
+                <TableRowCell
+                  key={name}
+                  className={styles.indexerFlags}
+                >
+                  {indexerFlags ? (
+                    <Popover
+                      anchor={<Icon name={icons.FLAG} kind={kinds.PRIMARY} />}
+                      title={translate('IndexerFlags')}
+                      body={<IndexerFlags indexerFlags={indexerFlags} />}
+                      position={tooltipPositions.LEFT}
+                    />
+                  ) : null}
+                </TableRowCell>
+              );
+            }
+
             if (name === 'status') {
               return (
                 <TableRowCell
                   key={name}
                   className={styles.status}
                 >
-                  <EpisodeStatusConnector
+                  <EpisodeStatus
                     episodeId={id}
                     episodeFileId={episodeFileId}
                   />
@@ -338,9 +362,10 @@ class EpisodeRow extends Component {
 
             if (name === 'actions') {
               return (
-                <EpisodeSearchCellConnector
+                <EpisodeSearchCell
                   key={name}
                   episodeId={id}
+                  episodeEntity='episodes'
                   seriesId={seriesId}
                   episodeTitle={title}
                 />
@@ -381,6 +406,7 @@ EpisodeRow.propTypes = {
   releaseGroup: PropTypes.string,
   customFormats: PropTypes.arrayOf(PropTypes.object),
   customFormatScore: PropTypes.number.isRequired,
+  indexerFlags: PropTypes.number.isRequired,
   mediaInfo: PropTypes.object,
   alternateTitles: PropTypes.arrayOf(PropTypes.object).isRequired,
   columns: PropTypes.arrayOf(PropTypes.object).isRequired,
@@ -389,7 +415,8 @@ EpisodeRow.propTypes = {
 
 EpisodeRow.defaultProps = {
   alternateTitles: [],
-  customFormats: []
+  customFormats: [],
+  indexerFlags: 0
 };
 
 export default EpisodeRow;

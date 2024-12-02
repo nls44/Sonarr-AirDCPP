@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using FluentValidation.Results;
 using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
@@ -12,6 +13,7 @@ using NzbDrone.Core.Indexers.Exceptions;
 using NzbDrone.Core.Localization;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
+using NzbDrone.Core.Validation;
 
 namespace NzbDrone.Core.ImportLists.AniList.List
 {
@@ -44,10 +46,11 @@ namespace NzbDrone.Core.ImportLists.AniList.List
             return new AniListParser(Settings);
         }
 
-        protected override IList<ImportListItemInfo> FetchItems(Func<IImportListRequestGenerator, ImportListPageableRequestChain> pageableRequestChainSelector, bool isRecent = false)
+        protected override ImportListFetchResult FetchItems(Func<IImportListRequestGenerator, ImportListPageableRequestChain> pageableRequestChainSelector, bool isRecent = false)
         {
             var releases = new List<ImportListItemInfo>();
             var url = string.Empty;
+            var anyFailure = true;
 
             try
             {
@@ -77,6 +80,7 @@ namespace NzbDrone.Core.ImportLists.AniList.List
                 while (hasNextPage);
 
                 _importListStatusService.RecordSuccess(Definition.Id);
+                anyFailure = false;
             }
             catch (WebException webException)
             {
@@ -149,7 +153,65 @@ namespace NzbDrone.Core.ImportLists.AniList.List
                 _logger.Error(ex, "An error occurred while processing feed. {0}", url);
             }
 
-            return CleanupListItems(releases);
+            return new ImportListFetchResult(CleanupListItems(releases), anyFailure);
+        }
+
+        protected override ValidationFailure TestConnection()
+        {
+            try
+            {
+                var parser = GetParser();
+                var generator = GetRequestGenerator();
+                var pageIndex = 1;
+                var continueTesting = true;
+                var hasResults = false;
+
+                // Anilist caps the result list to 50 items at maximum per query, so the data must be pulled in batches.
+                // The number of pages are not known upfront, so the fetch logic must be changed to look at the returned page data.
+                do
+                {
+                    var currentRequest = generator.GetRequest(pageIndex);
+                    var response = FetchImportListResponse(currentRequest);
+                    var page = parser.ParseResponse(response, out var pageInfo).ToList();
+
+                    // Continue testing additional pages if all results were filtered out by 'Media' filters and there are additional pages
+                    continueTesting = pageInfo.HasNextPage && page.Count == 0;
+                    pageIndex = pageInfo.CurrentPage + 1;
+                    hasResults = page.Count > 0;
+                }
+                while (continueTesting);
+
+                if (!hasResults)
+                {
+                    return new NzbDroneValidationFailure(string.Empty,
+                            "No results were returned from your import list, please check your settings and the log for details.")
+                        { IsWarning = true };
+                }
+            }
+            catch (RequestLimitReachedException)
+            {
+                _logger.Warn("Request limit reached");
+            }
+            catch (UnsupportedFeedException ex)
+            {
+                _logger.Warn(ex, "Import list feed is not supported");
+
+                return new ValidationFailure(string.Empty, "Import list feed is not supported: " + ex.Message);
+            }
+            catch (ImportListException ex)
+            {
+                _logger.Warn(ex, "Unable to connect to import list");
+
+                return new ValidationFailure(string.Empty, $"Unable to connect to import list: {ex.Message}. Check the log surrounding this error for details.");
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "Unable to connect to import list");
+
+                return new ValidationFailure(string.Empty, $"Unable to connect to import list: {ex.Message}. Check the log surrounding this error for details.");
+            }
+
+            return null;
         }
     }
 }

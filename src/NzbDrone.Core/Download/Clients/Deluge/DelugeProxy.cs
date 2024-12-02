@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Linq;
 using System.Net;
 using Newtonsoft.Json.Linq;
 using NLog;
 using NzbDrone.Common.Cache;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
 using NzbDrone.Common.Serializer;
 
@@ -16,8 +18,7 @@ namespace NzbDrone.Core.Download.Clients.Deluge
         Dictionary<string, object> GetConfig(DelugeSettings settings);
         DelugeTorrent[] GetTorrents(DelugeSettings settings);
         DelugeTorrent[] GetTorrentsByLabel(string label, DelugeSettings settings);
-        string[] GetAvailablePlugins(DelugeSettings settings);
-        string[] GetEnabledPlugins(DelugeSettings settings);
+        string[] GetMethods(DelugeSettings settings);
         string[] GetAvailableLabels(DelugeSettings settings);
         DelugeLabel GetLabelOptions(DelugeSettings settings);
         void SetTorrentLabel(string hash, string label, DelugeSettings settings);
@@ -28,6 +29,7 @@ namespace NzbDrone.Core.Download.Clients.Deluge
         string AddTorrentFromFile(string filename, byte[] fileContent, DelugeSettings settings);
         bool RemoveTorrent(string hash, bool removeData, DelugeSettings settings);
         void MoveTorrentToTopInQueue(string hash, DelugeSettings settings);
+        void ReconnectToDaemon(DelugeSettings settings);
     }
 
     public class DelugeProxy : IDelugeProxy
@@ -49,25 +51,14 @@ namespace NzbDrone.Core.Download.Clients.Deluge
 
         public string GetVersion(DelugeSettings settings)
         {
-            try
+            var methods = GetMethods(settings);
+
+            if (methods.Contains("daemon.get_version"))
             {
-                var response = ProcessRequest<string>(settings, "daemon.info");
-
-                return response;
+                return ProcessRequest<string>(settings, "daemon.get_version");
             }
-            catch (DownloadClientException ex)
-            {
-                if (ex.Message.Contains("Unknown method"))
-                {
-                    // Deluge v2 beta replaced 'daemon.info' with 'daemon.get_version'.
-                    // It may return or become official, for now we just retry with the get_version api.
-                    var response = ProcessRequest<string>(settings, "daemon.get_version");
 
-                    return response;
-                }
-
-                throw;
-            }
+            return ProcessRequest<string>(settings, "daemon.info");
         }
 
         public Dictionary<string, object> GetConfig(DelugeSettings settings)
@@ -99,13 +90,30 @@ namespace NzbDrone.Core.Download.Clients.Deluge
             return GetTorrents(response);
         }
 
+        public string[] GetMethods(DelugeSettings settings)
+        {
+            var response = ProcessRequest<string[]>(settings, "system.listMethods");
+
+            return response;
+        }
+
         public string AddTorrentFromMagnet(string magnetLink, DelugeSettings settings)
         {
-            var options = new
-                          {
-                              add_paused = settings.AddPaused,
-                              remove_at_ratio = false
-                          };
+            dynamic options = new ExpandoObject();
+
+            options.add_paused = settings.AddPaused;
+            options.remove_at_ratio = false;
+
+            if (settings.DownloadDirectory.IsNotNullOrWhiteSpace())
+            {
+              options.download_location = settings.DownloadDirectory;
+            }
+
+            if (settings.CompletedDirectory.IsNotNullOrWhiteSpace())
+            {
+              options.move_completed_path = settings.CompletedDirectory;
+              options.move_completed = true;
+            }
 
             var response = ProcessRequest<string>(settings, "core.add_torrent_magnet", magnetLink, options);
 
@@ -114,11 +122,21 @@ namespace NzbDrone.Core.Download.Clients.Deluge
 
         public string AddTorrentFromFile(string filename, byte[] fileContent, DelugeSettings settings)
         {
-            var options = new
-                          {
-                              add_paused = settings.AddPaused,
-                              remove_at_ratio = false
-                          };
+            dynamic options = new ExpandoObject();
+
+            options.add_paused = settings.AddPaused;
+            options.remove_at_ratio = false;
+
+            if (settings.DownloadDirectory.IsNotNullOrWhiteSpace())
+            {
+              options.download_location = settings.DownloadDirectory;
+            }
+
+            if (settings.CompletedDirectory.IsNotNullOrWhiteSpace())
+            {
+              options.move_completed_path = settings.CompletedDirectory;
+              options.move_completed = true;
+            }
 
             var response = ProcessRequest<string>(settings, "core.add_torrent_file", filename, fileContent, options);
 
@@ -135,20 +153,6 @@ namespace NzbDrone.Core.Download.Clients.Deluge
         public void MoveTorrentToTopInQueue(string hash, DelugeSettings settings)
         {
             ProcessRequest<object>(settings, "core.queue_top", (object)new string[] { hash });
-        }
-
-        public string[] GetAvailablePlugins(DelugeSettings settings)
-        {
-            var response = ProcessRequest<string[]>(settings, "core.get_available_plugins");
-
-            return response;
-        }
-
-        public string[] GetEnabledPlugins(DelugeSettings settings)
-        {
-            var response = ProcessRequest<string[]>(settings, "core.get_enabled_plugins");
-
-            return response;
         }
 
         public string[] GetAvailableLabels(DelugeSettings settings)
@@ -199,6 +203,12 @@ namespace NzbDrone.Core.Download.Clients.Deluge
         public void SetTorrentLabel(string hash, string label, DelugeSettings settings)
         {
             ProcessRequest<object>(settings, "label.set_torrent", hash, label);
+        }
+
+        public void ReconnectToDaemon(DelugeSettings settings)
+        {
+            ProcessRequest<string>(settings, "web.disconnect");
+            ConnectDaemon(BuildRequest(settings));
         }
 
         private JsonRpcRequestBuilder BuildRequest(DelugeSettings settings)

@@ -1,16 +1,14 @@
 using System;
-using System.Collections.Generic;
 using NLog;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Localization;
 using NzbDrone.Core.Parser;
-using NzbDrone.Core.Parser.Model;
 
 namespace NzbDrone.Core.ImportLists.Rss
 {
     public class RssImportBase<TSettings> : HttpImportListBase<TSettings>
-        where TSettings : RssImportBaseSettings, new()
+        where TSettings : RssImportBaseSettings<TSettings>, new()
     {
         public override string Name => "RSS List Base";
         public override ImportListType ListType => ImportListType.Advanced;
@@ -26,7 +24,7 @@ namespace NzbDrone.Core.ImportLists.Rss
         {
         }
 
-        public override IList<ImportListItemInfo> Fetch()
+        public override ImportListFetchResult Fetch()
         {
             return FetchItems(g => g.GetListItems());
         }
@@ -38,7 +36,7 @@ namespace NzbDrone.Core.ImportLists.Rss
 
         public override IImportListRequestGenerator GetRequestGenerator()
         {
-            return new RssImportRequestGenerator
+            return new RssImportRequestGenerator<TSettings>
             {
                 Settings = Settings
             };

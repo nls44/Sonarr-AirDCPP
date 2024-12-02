@@ -14,6 +14,8 @@ function getType({ type, selectOptionsProviderAction }) {
       return inputTypes.CHECK;
     case 'device':
       return inputTypes.DEVICE;
+    case 'keyValueList':
+      return inputTypes.KEY_VALUE_LIST;
     case 'password':
       return inputTypes.PASSWORD;
     case 'number':
@@ -27,6 +29,8 @@ function getType({ type, selectOptionsProviderAction }) {
         return inputTypes.DYNAMIC_SELECT;
       }
       return inputTypes.SELECT;
+    case 'seriesTag':
+      return inputTypes.SERIES_TAG;
     case 'tag':
       return inputTypes.TEXT_TAG;
     case 'tagSelect':
@@ -134,6 +138,8 @@ ProviderFieldFormGroup.propTypes = {
   type: PropTypes.string.isRequired,
   advanced: PropTypes.bool.isRequired,
   hidden: PropTypes.string,
+  isDisabled: PropTypes.bool,
+  provider: PropTypes.string,
   pending: PropTypes.bool.isRequired,
   errors: PropTypes.arrayOf(PropTypes.object).isRequired,
   warnings: PropTypes.arrayOf(PropTypes.object).isRequired,

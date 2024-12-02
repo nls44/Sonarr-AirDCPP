@@ -18,11 +18,11 @@ namespace NzbDrone.Core.Queue
         public QualityModel Quality { get; set; }
         public decimal Size { get; set; }
         public string Title { get; set; }
-        public decimal Sizeleft { get; set; }
-        public TimeSpan? Timeleft { get; set; }
+        public decimal SizeLeft { get; set; }
+        public TimeSpan? TimeLeft { get; set; }
         public DateTime? EstimatedCompletionTime { get; set; }
         public DateTime? Added { get; set; }
-        public string Status { get; set; }
+        public QueueStatus Status { get; set; }
         public TrackedDownloadStatus? TrackedDownloadStatus { get; set; }
         public TrackedDownloadState? TrackedDownloadState { get; set; }
         public List<TrackedDownloadStatusMessage> StatusMessages { get; set; }
@@ -30,6 +30,7 @@ namespace NzbDrone.Core.Queue
         public RemoteEpisode RemoteEpisode { get; set; }
         public DownloadProtocol Protocol { get; set; }
         public string DownloadClient { get; set; }
+        public bool DownloadClientHasPostImportCategory { get; set; }
         public string Indexer { get; set; }
         public string OutputPath { get; set; }
         public string ErrorMessage { get; set; }

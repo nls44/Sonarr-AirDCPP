@@ -53,12 +53,20 @@ namespace NzbDrone.Core.Tv
             {
                 try
                 {
-                    var episodeToUpdate = GetEpisodeToUpdate(series, episode, existingEpisodes);
+                    var episodeToUpdate = existingEpisodes.FirstOrDefault(e => e.SeasonNumber == episode.SeasonNumber && e.EpisodeNumber == episode.EpisodeNumber);
 
                     if (episodeToUpdate != null)
                     {
                         existingEpisodes.Remove(episodeToUpdate);
                         updateList.Add(episodeToUpdate);
+
+                        // Anime series with newly added absolute episode number
+                        if (series.SeriesType == SeriesTypes.Anime &&
+                            !episodeToUpdate.AbsoluteEpisodeNumber.HasValue &&
+                            episode.AbsoluteEpisodeNumber.HasValue)
+                        {
+                            episodeToUpdate.AbsoluteEpisodeNumberAdded = true;
+                        }
                     }
                     else
                     {
@@ -137,7 +145,7 @@ namespace NzbDrone.Core.Tv
 
         private bool GetMonitoredStatus(Episode episode, IEnumerable<Season> seasons, Series series)
         {
-            if ((episode.EpisodeNumber == 0 && episode.SeasonNumber != 1) || series.MonitorNewItems == NewItemMonitorTypes.None)
+            if (episode.EpisodeNumber == 0 && episode.SeasonNumber != 1)
             {
                 return false;
             }
@@ -225,24 +233,6 @@ namespace NzbDrone.Core.Tv
                                  .DistinctBy(e => e.AbsoluteEpisodeNumber.Value)
                                  .Concat(remoteEpisodes.Where(e => !e.AbsoluteEpisodeNumber.HasValue))
                                  .ToList();
-        }
-
-        private Episode GetEpisodeToUpdate(Series series, Episode episode, List<Episode> existingEpisodes)
-        {
-            if (series.SeriesType == SeriesTypes.Anime)
-            {
-                if (episode.AbsoluteEpisodeNumber.HasValue)
-                {
-                    var matchingEpisode = existingEpisodes.FirstOrDefault(e => e.AbsoluteEpisodeNumber == episode.AbsoluteEpisodeNumber);
-
-                    if (matchingEpisode != null)
-                    {
-                        return matchingEpisode;
-                    }
-                }
-            }
-
-            return existingEpisodes.FirstOrDefault(e => e.SeasonNumber == episode.SeasonNumber && e.EpisodeNumber == episode.EpisodeNumber);
         }
 
         private IEnumerable<Episode> OrderEpisodes(Series series, List<Episode> episodes)

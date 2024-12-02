@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using Equ;
 using FluentValidation;
 using NzbDrone.Core.Annotations;
+using NzbDrone.Core.Languages;
 using NzbDrone.Core.Validation;
 
 namespace NzbDrone.Core.Indexers.FileList
@@ -18,9 +20,9 @@ namespace NzbDrone.Core.Indexers.FileList
         }
     }
 
-    public class FileListSettings : ITorrentIndexerSettings
+    public class FileListSettings : PropertywiseEquatable<FileListSettings>, ITorrentIndexerSettings
     {
-        private static readonly FileListSettingsValidator Validator = new FileListSettingsValidator();
+        private static readonly FileListSettingsValidator Validator = new ();
 
         public FileListSettings()
         {
@@ -35,6 +37,8 @@ namespace NzbDrone.Core.Indexers.FileList
             };
 
             AnimeCategories = Array.Empty<int>();
+            MultiLanguages = Array.Empty<int>();
+            FailDownloads = Array.Empty<int>();
         }
 
         [FieldDefinition(0, Label = "Username", Privacy = PrivacyLevel.UserName)]
@@ -42,6 +46,9 @@ namespace NzbDrone.Core.Indexers.FileList
 
         [FieldDefinition(1, Label = "IndexerSettingsPasskey", Privacy = PrivacyLevel.ApiKey)]
         public string Passkey { get; set; }
+
+        [FieldDefinition(2, Type = FieldType.Select, SelectOptions = typeof(RealLanguageFieldConverter), Label = "IndexerSettingsMultiLanguageRelease", HelpText = "IndexerSettingsMultiLanguageReleaseHelpText", Advanced = true)]
+        public IEnumerable<int> MultiLanguages { get; set; }
 
         [FieldDefinition(3, Label = "IndexerSettingsApiUrl", Advanced = true, HelpText = "IndexerSettingsApiUrlHelpText")]
         public string BaseUrl { get; set; }
@@ -56,10 +63,13 @@ namespace NzbDrone.Core.Indexers.FileList
         public int MinimumSeeders { get; set; }
 
         [FieldDefinition(7)]
-        public SeedCriteriaSettings SeedCriteria { get; set; } = new SeedCriteriaSettings();
+        public SeedCriteriaSettings SeedCriteria { get; set; } = new ();
 
         [FieldDefinition(8, Type = FieldType.Checkbox, Label = "IndexerSettingsRejectBlocklistedTorrentHashes", HelpText = "IndexerSettingsRejectBlocklistedTorrentHashesHelpText", Advanced = true)]
         public bool RejectBlocklistedTorrentHashesWhileGrabbing { get; set; }
+
+        [FieldDefinition(9, Type = FieldType.Select, SelectOptions = typeof(FailDownloads), Label = "IndexerSettingsFailDownloads", HelpText = "IndexerSettingsFailDownloadsHelpText", Advanced = true)]
+        public IEnumerable<int> FailDownloads { get; set; }
 
         public NzbDroneValidationResult Validate()
         {
@@ -69,17 +79,19 @@ namespace NzbDrone.Core.Indexers.FileList
 
     public enum FileListCategories
     {
-        [FieldOption]
+        [FieldOption(Label = "Anime")]
         Anime = 24,
-        [FieldOption]
+        [FieldOption(Label = "Animation")]
         Animation = 15,
-        [FieldOption]
+        [FieldOption(Label = "TV 4K")]
         TV_4K = 27,
-        [FieldOption]
+        [FieldOption(Label = "TV HD")]
         TV_HD = 21,
-        [FieldOption]
+        [FieldOption(Label = "TV SD")]
         TV_SD = 23,
-        [FieldOption]
-        Sport = 13
+        [FieldOption(Label = "Sport")]
+        Sport = 13,
+        [FieldOption(Label = "RO Dubbed")]
+        RoDubbed = 28
     }
 }

@@ -8,17 +8,20 @@ using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.Localization;
 using NzbDrone.Core.Notifications.Plex.PlexTv;
 using NzbDrone.Core.Parser;
-using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Validation;
 
 namespace NzbDrone.Core.ImportLists.Plex
 {
     public class PlexImport : HttpImportListBase<PlexListSettings>
     {
-        public readonly IPlexTvService _plexTvService;
-
+        public override string Name => _localizationService.GetLocalizedString("ImportListsPlexSettingsWatchlistName");
         public override ImportListType ListType => ImportListType.Plex;
         public override TimeSpan MinRefreshInterval => TimeSpan.FromHours(6);
+
+        public override int PageSize => 100;
+        public override TimeSpan RateLimit => TimeSpan.FromSeconds(5);
+
+        private readonly IPlexTvService _plexTvService;
 
         public PlexImport(IPlexTvService plexTvService,
                                   IHttpClient httpClient,
@@ -32,14 +35,9 @@ namespace NzbDrone.Core.ImportLists.Plex
             _plexTvService = plexTvService;
         }
 
-        public override string Name => _localizationService.GetLocalizedString("ImportListsPlexSettingsWatchlistName");
-        public override int PageSize => 50;
-
-        public override IList<ImportListItemInfo> Fetch()
+        public override ImportListFetchResult Fetch()
         {
             Settings.Validate().Filter("AccessToken").ThrowOnError();
-
-            // var generator = GetRequestGenerator();
 
             return FetchItems(g => g.GetListItems());
         }
@@ -51,10 +49,7 @@ namespace NzbDrone.Core.ImportLists.Plex
 
         public override IImportListRequestGenerator GetRequestGenerator()
         {
-            return new PlexListRequestGenerator(_plexTvService, PageSize)
-            {
-                Settings = Settings
-            };
+            return new PlexListRequestGenerator(_plexTvService, Settings, PageSize);
         }
 
         public override object RequestAction(string action, IDictionary<string, string> query)

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NLog;
-using NLog.Fluent;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Instrumentation.Extensions;
@@ -34,6 +33,9 @@ namespace NzbDrone.Core.Download
         private readonly IParsingService _parsingService;
         private readonly ISeriesService _seriesService;
         private readonly ITrackedDownloadAlreadyImported _trackedDownloadAlreadyImported;
+        private readonly IEpisodeService _episodeService;
+        private readonly IMediaFileService _mediaFileService;
+        private readonly IRejectedImportService _rejectedImportService;
         private readonly Logger _logger;
 
         public CompletedDownloadService(IEventAggregator eventAggregator,
@@ -43,6 +45,9 @@ namespace NzbDrone.Core.Download
                                         IParsingService parsingService,
                                         ISeriesService seriesService,
                                         ITrackedDownloadAlreadyImported trackedDownloadAlreadyImported,
+                                        IEpisodeService episodeService,
+                                        IMediaFileService mediaFileService,
+                                        IRejectedImportService rejectedImportService,
                                         Logger logger)
         {
             _eventAggregator = eventAggregator;
@@ -52,6 +57,9 @@ namespace NzbDrone.Core.Download
             _parsingService = parsingService;
             _seriesService = seriesService;
             _trackedDownloadAlreadyImported = trackedDownloadAlreadyImported;
+            _episodeService = episodeService;
+            _mediaFileService = mediaFileService;
+            _rejectedImportService = rejectedImportService;
             _logger = logger;
         }
 
@@ -64,8 +72,8 @@ namespace NzbDrone.Core.Download
 
             SetImportItem(trackedDownload);
 
-            // Only process tracked downloads that are still downloading
-            if (trackedDownload.State != TrackedDownloadState.Downloading)
+            // Only process tracked downloads that are still downloading or have been blocked for importing due to an issue with matching
+            if (trackedDownload.State != TrackedDownloadState.Downloading && trackedDownload.State != TrackedDownloadState.ImportBlocked)
             {
                 return;
             }
@@ -96,6 +104,8 @@ namespace NzbDrone.Core.Download
                 if (series == null)
                 {
                     trackedDownload.Warn("Series title mismatch; automatic import is not possible. Check the download troubleshooting entry on the wiki for common causes.");
+                    SetStateToImportBlocked(trackedDownload);
+
                     return;
                 }
 
@@ -106,16 +116,7 @@ namespace NzbDrone.Core.Download
                 if (seriesMatchType == SeriesMatchType.Id && releaseSource != ReleaseSourceType.InteractiveSearch)
                 {
                     trackedDownload.Warn("Found matching series via grab history, but release was matched to series by ID. Automatic import is not possible. See the FAQ for details.");
-
-                    if (!trackedDownload.HasNotifiedManualInteractionRequired)
-                    {
-                        trackedDownload.HasNotifiedManualInteractionRequired = true;
-
-                        var releaseInfo = new GrabbedReleaseInfo(grabbedHistories);
-                        var manualInteractionEvent = new ManualInteractionRequiredEvent(trackedDownload, releaseInfo);
-
-                        _eventAggregator.PublishEvent(manualInteractionEvent);
-                    }
+                    SetStateToImportBlocked(trackedDownload);
 
                     return;
                 }
@@ -136,6 +137,8 @@ namespace NzbDrone.Core.Download
             if (trackedDownload.RemoteEpisode == null)
             {
                 trackedDownload.Warn("Unable to parse download, automatic import is not possible.");
+                SetStateToImportBlocked(trackedDownload);
+
                 return;
             }
 
@@ -165,10 +168,8 @@ namespace NzbDrone.Core.Download
             {
                 var firstResult = importResults.First();
 
-                if (firstResult.Result == ImportResultType.Rejected && firstResult.ImportDecision.LocalEpisode == null)
+                if (_rejectedImportService.Process(trackedDownload, firstResult))
                 {
-                    trackedDownload.Warn(new TrackedDownloadStatusMessage(firstResult.Errors.First(), new List<string>()));
-
                     return;
                 }
             }
@@ -192,6 +193,7 @@ namespace NzbDrone.Core.Download
             if (statusMessages.Any())
             {
                 trackedDownload.Warn(statusMessages.ToArray());
+                SetStateToImportBlocked(trackedDownload);
             }
         }
 
@@ -202,11 +204,23 @@ namespace NzbDrone.Core.Download
                                                    .Count() >= Math.Max(1,
                                           trackedDownload.RemoteEpisode.Episodes.Count);
 
+            var historyItems = _historyService.FindByDownloadId(trackedDownload.DownloadItem.DownloadId)
+                .OrderByDescending(h => h.Date)
+                .ToList();
+
+            var grabbedHistory = historyItems.Where(h => h.EventType == EpisodeHistoryEventType.Grabbed).ToList();
+            var releaseInfo = grabbedHistory.Count > 0 ? new GrabbedReleaseInfo(grabbedHistory) : null;
+
             if (allEpisodesImported)
             {
                 _logger.Debug("All episodes were imported for {0}", trackedDownload.DownloadItem.Title);
                 trackedDownload.State = TrackedDownloadState.Imported;
-                _eventAggregator.PublishEvent(new DownloadCompletedEvent(trackedDownload, trackedDownload.RemoteEpisode.Series.Id));
+
+                _eventAggregator.PublishEvent(new DownloadCompletedEvent(trackedDownload,
+                    trackedDownload.RemoteEpisode.Series.Id,
+                    importResults.Where(c => c.Result == ImportResultType.Imported).Select(c => c.EpisodeFile).ToList(),
+                    releaseInfo));
+
                 return true;
             }
 
@@ -220,11 +234,6 @@ namespace NzbDrone.Core.Download
             // safe, but commenting for future benefit.
 
             var atLeastOneEpisodeImported = importResults.Any(c => c.Result == ImportResultType.Imported);
-
-            var historyItems = _historyService.FindByDownloadId(trackedDownload.DownloadItem.DownloadId)
-                                              .OrderByDescending(h => h.Date)
-                                              .ToList();
-
             var allEpisodesImportedInHistory = _trackedDownloadAlreadyImported.IsImported(trackedDownload, historyItems);
 
             if (allEpisodesImportedInHistory)
@@ -238,24 +247,44 @@ namespace NzbDrone.Core.Download
                 }
                 else
                 {
-                    _logger.Debug()
+                    _logger.ForDebugEvent()
                            .Message("No Episodes were just imported, but all episodes were previously imported, possible issue with download history.")
                            .Property("SeriesId", trackedDownload.RemoteEpisode.Series.Id)
                            .Property("DownloadId", trackedDownload.DownloadItem.DownloadId)
                            .Property("Title", trackedDownload.DownloadItem.Title)
                            .Property("Path", trackedDownload.ImportItem.OutputPath.ToString())
                            .WriteSentryWarn("DownloadHistoryIncomplete")
-                           .Write();
+                           .Log();
                 }
 
+                var episodes = _episodeService.GetEpisodes(trackedDownload.RemoteEpisode.Episodes.Select(e => e.Id));
+                var files = _mediaFileService.GetFiles(episodes.Select(e => e.EpisodeFileId).Where(i => i > 0).Distinct());
+
                 trackedDownload.State = TrackedDownloadState.Imported;
-                _eventAggregator.PublishEvent(new DownloadCompletedEvent(trackedDownload, trackedDownload.RemoteEpisode.Series.Id));
+                _eventAggregator.PublishEvent(new DownloadCompletedEvent(trackedDownload, trackedDownload.RemoteEpisode.Series.Id, files, releaseInfo));
 
                 return true;
             }
 
             _logger.Debug("Not all episodes have been imported for the release '{0}'", trackedDownload.DownloadItem.Title);
             return false;
+        }
+
+        private void SetStateToImportBlocked(TrackedDownload trackedDownload)
+        {
+            trackedDownload.State = TrackedDownloadState.ImportBlocked;
+
+            if (!trackedDownload.HasNotifiedManualInteractionRequired)
+            {
+                var grabbedHistories = _historyService.FindByDownloadId(trackedDownload.DownloadItem.DownloadId).Where(h => h.EventType == EpisodeHistoryEventType.Grabbed).ToList();
+
+                trackedDownload.HasNotifiedManualInteractionRequired = true;
+
+                var releaseInfo = grabbedHistories.Count > 0 ? new GrabbedReleaseInfo(grabbedHistories) : null;
+                var manualInteractionEvent = new ManualInteractionRequiredEvent(trackedDownload, releaseInfo);
+
+                _eventAggregator.PublishEvent(manualInteractionEvent);
+            }
         }
 
         private void SetImportItem(TrackedDownload trackedDownload)

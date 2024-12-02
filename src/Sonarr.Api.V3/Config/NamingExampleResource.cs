@@ -25,6 +25,7 @@ namespace Sonarr.Api.V3.Config
                 RenameEpisodes = model.RenameEpisodes,
                 ReplaceIllegalCharacters = model.ReplaceIllegalCharacters,
                 ColonReplacementFormat = (int)model.ColonReplacementFormat,
+                CustomColonReplacementFormat = model.CustomColonReplacementFormat,
                 MultiEpisodeStyle = (int)model.MultiEpisodeStyle,
                 StandardEpisodeFormat = model.StandardEpisodeFormat,
                 DailyEpisodeFormat = model.DailyEpisodeFormat,
@@ -32,24 +33,7 @@ namespace Sonarr.Api.V3.Config
                 SeriesFolderFormat = model.SeriesFolderFormat,
                 SeasonFolderFormat = model.SeasonFolderFormat,
                 SpecialsFolderFormat = model.SpecialsFolderFormat
-
-                // IncludeSeriesTitle
-                // IncludeEpisodeTitle
-                // IncludeQuality
-                // ReplaceSpaces
-                // Separator
-                // NumberStyle
             };
-        }
-
-        public static void AddToResource(this BasicNamingConfig basicNamingConfig, NamingConfigResource resource)
-        {
-            resource.IncludeSeriesTitle = basicNamingConfig.IncludeSeriesTitle;
-            resource.IncludeEpisodeTitle = basicNamingConfig.IncludeEpisodeTitle;
-            resource.IncludeQuality = basicNamingConfig.IncludeQuality;
-            resource.ReplaceSpaces = basicNamingConfig.ReplaceSpaces;
-            resource.Separator = basicNamingConfig.Separator;
-            resource.NumberStyle = basicNamingConfig.NumberStyle;
         }
 
         public static NamingConfig ToModel(this NamingConfigResource resource)
@@ -62,6 +46,7 @@ namespace Sonarr.Api.V3.Config
                 ReplaceIllegalCharacters = resource.ReplaceIllegalCharacters,
                 MultiEpisodeStyle = (MultiEpisodeStyle)resource.MultiEpisodeStyle,
                 ColonReplacementFormat = (ColonReplacementFormat)resource.ColonReplacementFormat,
+                CustomColonReplacementFormat = resource.CustomColonReplacementFormat ?? "",
                 StandardEpisodeFormat = resource.StandardEpisodeFormat,
                 DailyEpisodeFormat = resource.DailyEpisodeFormat,
                 AnimeEpisodeFormat = resource.AnimeEpisodeFormat,

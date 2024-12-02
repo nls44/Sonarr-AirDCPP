@@ -225,13 +225,13 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
 
             foreach (var torrent in torrents)
             {
-                var item = new DownloadClientItem()
+                var item = new DownloadClientItem
                 {
                     DownloadId = torrent.Hash.ToUpper(),
                     Category = torrent.Category.IsNotNullOrWhiteSpace() ? torrent.Category : torrent.Label,
                     Title = torrent.Name,
                     TotalSize = torrent.Size,
-                    DownloadClientInfo = DownloadClientItemClientInfo.FromDownloadClient(this),
+                    DownloadClientInfo = DownloadClientItemClientInfo.FromDownloadClient(this, Settings.TvImportedCategory.IsNotNullOrWhiteSpace()),
                     RemainingSize = (long)(torrent.Size * (1.0 - torrent.Progress)),
                     RemainingTime = GetRemainingTime(torrent),
                     SeedRatio = torrent.Ratio
@@ -239,7 +239,10 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
 
                 // Avoid removing torrents that haven't reached the global max ratio.
                 // Removal also requires the torrent to be paused, in case a higher max ratio was set on the torrent itself (which is not exposed by the api).
-                item.CanMoveFiles = item.CanBeRemoved = torrent.State == "pausedUP" && HasReachedSeedLimit(torrent, config);
+                item.CanMoveFiles = item.CanBeRemoved =
+                    item.DownloadClientInfo.RemoveCompletedDownloads &&
+                    torrent.State is "pausedUP" or "stoppedUP" &&
+                    HasReachedSeedLimit(torrent, config);
 
                 switch (torrent.State)
                 {
@@ -248,7 +251,8 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                         item.Message = _localizationService.GetLocalizedString("DownloadClientQbittorrentTorrentStateError");
                         break;
 
-                    case "pausedDL": // torrent is paused and has NOT finished downloading
+                    case "stoppedDL": // torrent is stopped and has NOT finished downloading
+                    case "pausedDL": // torrent is paused and has NOT finished downloading (qBittorrent < 5)
                         item.Status = DownloadItemStatus.Paused;
                         break;
 
@@ -259,7 +263,8 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                         item.Status = DownloadItemStatus.Queued;
                         break;
 
-                    case "pausedUP": // torrent is paused and has finished downloading:
+                    case "pausedUP": // torrent is paused and has finished downloading (qBittorent < 5)
+                    case "stoppedUP": // torrent is stopped and has finished downloading
                     case "uploading": // torrent is being seeded and data is being transferred
                     case "stalledUP": // torrent is being seeded, but no connection were made
                     case "queuedUP": // queuing is enabled and torrent is queued for upload
@@ -279,6 +284,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                         break;
 
                     case "metaDL": // torrent magnet is being downloaded
+                    case "forcedMetaDL": // torrent metadata is being forcibly downloaded
                         if (config.DhtEnabled)
                         {
                             item.Status = DownloadItemStatus.Queued;
@@ -293,7 +299,6 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                         break;
 
                     case "forcedDL": // torrent is being downloaded, and was forced started
-                    case "forcedMetaDL": // torrent metadata is being forcibly downloaded
                     case "moving": // torrent is being moved from a folder
                     case "downloading": // torrent is being downloaded and data is being transferred
                         item.Status = DownloadItemStatus.Downloading;
@@ -375,7 +380,15 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             {
                 if (Proxy.GetLabels(Settings).TryGetValue(Settings.TvCategory, out var label) && label.SavePath.IsNotNullOrWhiteSpace())
                 {
-                    var labelDir = new OsPath(label.SavePath);
+                    var savePath = label.SavePath;
+
+                    if (savePath.StartsWith("//"))
+                    {
+                        _logger.Trace("Replacing double forward slashes in path '{0}'. If this is not meant to be a Windows UNC path fix the 'Save Path' in qBittorrent's {1} category", savePath, Settings.TvCategory);
+                        savePath = savePath.Replace('/', '\\');
+                    }
+
+                    var labelDir = new OsPath(savePath);
 
                     if (labelDir.IsRooted)
                     {
@@ -388,14 +401,18 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                 }
             }
 
-            var minimumRetention = 60 * 24 * 14;
-
             return new DownloadClientInfo
             {
                 IsLocalhost = Settings.Host == "127.0.0.1" || Settings.Host == "localhost",
                 OutputRootFolders = new List<OsPath> { _remotePathMappingService.RemapRemoteToLocal(Settings.Host, destDir) },
-                RemovesCompletedDownloads = (config.MaxRatioEnabled || (config.MaxSeedingTimeEnabled && config.MaxSeedingTime < minimumRetention)) && (config.MaxRatioAction == QBittorrentMaxRatioAction.Remove || config.MaxRatioAction == QBittorrentMaxRatioAction.DeleteFiles)
+                RemovesCompletedDownloads = RemovesCompletedDownloads(config)
             };
+        }
+
+        private bool RemovesCompletedDownloads(QBittorrentPreferences config)
+        {
+            var minimumRetention = 60 * 24 * 14; // 14 days in minutes
+            return (config.MaxRatioEnabled || (config.MaxSeedingTimeEnabled && config.MaxSeedingTime < minimumRetention)) && (config.MaxRatioAction == QBittorrentMaxRatioAction.Remove || config.MaxRatioAction == QBittorrentMaxRatioAction.DeleteFiles);
         }
 
         protected override void Test(List<ValidationFailure> failures)
@@ -448,7 +465,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
 
                 // Complain if qBittorrent is configured to remove torrents on max ratio
                 var config = Proxy.GetConfig(Settings);
-                if ((config.MaxRatioEnabled || config.MaxSeedingTimeEnabled) && (config.MaxRatioAction == QBittorrentMaxRatioAction.Remove || config.MaxRatioAction == QBittorrentMaxRatioAction.DeleteFiles))
+                if (RemovesCompletedDownloads(config))
                 {
                     return new NzbDroneValidationFailure(string.Empty, _localizationService.GetLocalizedString("DownloadClientQbittorrentValidationRemovesAtRatioLimit"))
                     {
@@ -626,7 +643,7 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
                 }
             }
 
-            if (HasReachedSeedingTimeLimit(torrent, config))
+            if (HasReachedSeedingTimeLimit(torrent, config) || HasReachedInactiveSeedingTimeLimit(torrent, config))
             {
                 return true;
             }
@@ -696,6 +713,26 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
             }
 
             return false;
+        }
+
+        protected bool HasReachedInactiveSeedingTimeLimit(QBittorrentTorrent torrent, QBittorrentPreferences config)
+        {
+            long inactiveSeedingTimeLimit;
+
+            if (torrent.InactiveSeedingTimeLimit >= 0)
+            {
+                inactiveSeedingTimeLimit = torrent.InactiveSeedingTimeLimit * 60;
+            }
+            else if (torrent.InactiveSeedingTimeLimit == -2 && config.MaxInactiveSeedingTimeEnabled)
+            {
+                inactiveSeedingTimeLimit = config.MaxInactiveSeedingTime * 60;
+            }
+            else
+            {
+                return false;
+            }
+
+            return DateTimeOffset.UtcNow.ToUnixTimeSeconds() - torrent.LastActivity > inactiveSeedingTimeLimit;
         }
 
         protected void FetchTorrentDetails(QBittorrentTorrent torrent)

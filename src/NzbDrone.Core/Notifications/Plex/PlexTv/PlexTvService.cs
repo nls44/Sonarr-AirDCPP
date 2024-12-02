@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using NzbDrone.Common.Cache;
@@ -14,6 +15,7 @@ namespace NzbDrone.Core.Notifications.Plex.PlexTv
         PlexTvSignInUrlResponse GetSignInUrl(string callbackUrl, int pinId, string pinCode);
         string GetAuthToken(int pinId);
         void Ping(string authToken);
+        List<PlexTvResource> GetServers(string authToken);
         HttpRequest GetWatchlist(string authToken, int pageSize, int pageOffset);
     }
 
@@ -93,13 +95,23 @@ namespace NzbDrone.Core.Notifications.Plex.PlexTv
             _cache.Get(authToken, () => _proxy.Ping(_configService.PlexClientIdentifier, authToken), TimeSpan.FromHours(24));
         }
 
+        public List<PlexTvResource> GetServers(string authToken)
+        {
+            Ping(authToken);
+
+            var clientIdentifier = _configService.PlexClientIdentifier;
+            var resources = _proxy.GetResources(clientIdentifier, authToken);
+
+            return resources.Where(r => r.Owned && r.Provides.Contains("server")).ToList();
+        }
+
         public HttpRequest GetWatchlist(string authToken, int pageSize, int pageOffset)
         {
             Ping(authToken);
 
             var clientIdentifier = _configService.PlexClientIdentifier;
 
-            var requestBuilder = new HttpRequestBuilder("https://metadata.provider.plex.tv/library/sections/watchlist/all")
+            var requestBuilder = new HttpRequestBuilder("https://discover.provider.plex.tv/library/sections/watchlist/all")
                                  .Accept(HttpAccept.Json)
                                  .AddQueryParam("clientID", clientIdentifier)
                                  .AddQueryParam("context[device][product]", BuildInfo.AppName)
@@ -107,7 +119,8 @@ namespace NzbDrone.Core.Notifications.Plex.PlexTv
                                  .AddQueryParam("context[device][platformVersion]", "7")
                                  .AddQueryParam("context[device][version]", BuildInfo.Version.ToString())
                                  .AddQueryParam("includeFields", "title,type,year,ratingKey")
-                                 .AddQueryParam("includeElements", "Guid")
+                                 .AddQueryParam("excludeElements", "Image")
+                                 .AddQueryParam("includeGuids", "1")
                                  .AddQueryParam("sort", "watchlistedAt:desc")
                                  .AddQueryParam("type", (int)PlexMediaType.Show)
                                  .AddQueryParam("X-Plex-Container-Size", pageSize)

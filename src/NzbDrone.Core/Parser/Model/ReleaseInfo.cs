@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 using NzbDrone.Core.Download.Pending;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Languages;
@@ -38,6 +38,9 @@ namespace NzbDrone.Core.Parser.Model
         public string Resolution { get; set; }
 
         public List<Language> Languages { get; set; }
+
+        [JsonIgnore]
+        public IndexerFlags IndexerFlags { get; set; }
 
         // Used to track pending releases that are being reprocessed
         [JsonIgnore]
@@ -100,6 +103,7 @@ namespace NzbDrone.Core.Parser.Model
                     stringBuilder.AppendLine("DownloadProtocol: " + DownloadProtocol ?? "Empty");
                     stringBuilder.AppendLine("TvdbId: " + TvdbId ?? "Empty");
                     stringBuilder.AppendLine("TvRageId: " + TvRageId ?? "Empty");
+                    stringBuilder.AppendLine("ImdbId: " + ImdbId ?? "Empty");
                     stringBuilder.AppendLine("PublishDate: " + PublishDate ?? "Empty");
                     return stringBuilder.ToString();
                 default:

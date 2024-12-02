@@ -1,10 +1,16 @@
-import SortDirection from 'Helpers/Props/SortDirection';
-import { FilterBuilderProp } from './AppState';
+import Column from 'Components/Table/Column';
+import { SortDirection } from 'Helpers/Props/sortDirections';
+import { ValidationFailure } from 'typings/pending';
+import { FilterBuilderProp, PropertyFilter } from './AppState';
 
 export interface Error {
-  responseJSON: {
-    message: string;
-  };
+  status?: number;
+  responseJSON:
+    | {
+        message: string | undefined;
+      }
+    | ValidationFailure[]
+    | undefined;
 }
 
 export interface AppSectionDeleteState {
@@ -18,10 +24,18 @@ export interface AppSectionSaveState {
 }
 
 export interface PagedAppSectionState {
+  page: number;
   pageSize: number;
+  totalPages: number;
+  totalRecords?: number;
+}
+export interface TableAppSectionState {
+  columns: Column[];
 }
 
 export interface AppSectionFilterState<T> {
+  selectedFilterKey: string;
+  filters: PropertyFilter[];
   filterBuilderProps: FilterBuilderProp<T>[];
 }
 
@@ -34,11 +48,29 @@ export interface AppSectionSchemaState<T> {
   };
 }
 
+export interface AppSectionItemSchemaState<T> {
+  isSchemaFetching: boolean;
+  isSchemaPopulated: boolean;
+  schemaError: Error;
+  schema: T;
+}
+
 export interface AppSectionItemState<T> {
   isFetching: boolean;
   isPopulated: boolean;
   error: Error;
+  pendingChanges: Partial<T>;
   item: T;
+}
+
+export interface AppSectionProviderState<T>
+  extends AppSectionDeleteState,
+    AppSectionSaveState {
+  isFetching: boolean;
+  isPopulated: boolean;
+  error: Error;
+  items: T[];
+  pendingChanges: Partial<T>;
 }
 
 interface AppSectionState<T> {

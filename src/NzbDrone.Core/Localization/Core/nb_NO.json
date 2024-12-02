@@ -7,5 +7,16 @@
     "Add": "Legg til",
     "Absolute": "Absolutt",
     "Activity": "Aktivitet",
-    "About": "Om"
+    "About": "Om",
+    "CalendarOptions": "Kalenderinnstillinger",
+    "AbsoluteEpisodeNumbers": "Absolutte Episode Numre",
+    "AddANewPath": "Legg til ny filsti",
+    "AddConditionImplementation": "Legg til betingelse - {implementationName}",
+    "AddConditionError": "Ikke mulig å legge til ny betingelse, vennligst prøv igjen",
+    "AbsoluteEpisodeNumber": "Absolutt Episode Nummer",
+    "AddAutoTagError": "Ikke mulig å legge til ny automatisk tagg, vennligst prøv igjen",
+    "Actions": "Handlinger",
+    "AddCustomFilter": "Legg til eget filter",
+    "AddConnection": "Legg til tilkobling",
+    "AddDelayProfile": "Legg til forsinkelsesprofil"
 }

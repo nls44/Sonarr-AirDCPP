@@ -3,6 +3,7 @@
 interface CssExports {
   'directConnect': string;
   'torrent': string;
+  'unknown': string;
   'usenet': string;
 }
 export const cssExports: CssExports;

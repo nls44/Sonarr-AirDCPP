@@ -15,8 +15,7 @@ function TheTvdb(props) {
         <div className={styles.title}>
           {translate('TheTvdb')}
         </div>
-
-        <InlineMarkdown data={translate('SeriesAndEpisodeInformationIsProvidedByTheTVDB')} />
+        <InlineMarkdown data={translate('SeriesAndEpisodeInformationIsProvidedByTheTVDB', { url: 'https://www.thetvdb.com/subscribe' })} />
       </div>
 
     </div>

@@ -29,6 +29,7 @@ export const defaultState = {
     showTitle: false,
     showMonitored: true,
     showQualityProfile: true,
+    showTags: false,
     showSearchAction: false
   },
 
@@ -43,6 +44,7 @@ export const defaultState = {
     showSeasonCount: true,
     showPath: false,
     showSizeOnDisk: false,
+    showTags: false,
     showSearchAction: false
   },
 
@@ -193,6 +195,12 @@ export const defaultState = {
       isVisible: false
     },
     {
+      name: 'monitorNewItems',
+      label: () => translate('MonitorNewSeasons'),
+      isSortable: true,
+      isVisible: false
+    },
+    {
       name: 'actions',
       columnLabel: () => translate('Actions'),
       isVisible: true,
@@ -272,6 +280,10 @@ export const defaultState = {
       const { ratings = {} } = item;
 
       return ratings.value;
+    },
+
+    monitorNewItems: function(item) {
+      return item.monitorNewItems === 'all' ? 1 : 0;
     }
   },
 

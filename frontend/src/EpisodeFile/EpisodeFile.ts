@@ -1,4 +1,5 @@
 import ModelBase from 'App/ModelBase';
+import ReleaseType from 'InteractiveImport/ReleaseType';
 import Language from 'Language/Language';
 import { QualityModel } from 'Quality/Quality';
 import CustomFormat from 'typings/CustomFormat';
@@ -16,6 +17,9 @@ export interface EpisodeFile extends ModelBase {
   languages: Language[];
   quality: QualityModel;
   customFormats: CustomFormat[];
+  customFormatScore: number;
+  indexerFlags: number;
+  releaseType: ReleaseType;
   mediaInfo: MediaInfo;
   qualityCutoffNotMet: boolean;
 }

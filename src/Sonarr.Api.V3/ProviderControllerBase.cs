@@ -3,15 +3,23 @@ using System.Linq;
 using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Mvc;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Serializer;
+using NzbDrone.Core.Datastore.Events;
+using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.ThingiProvider;
+using NzbDrone.Core.ThingiProvider.Events;
 using NzbDrone.Core.Validation;
+using NzbDrone.SignalR;
 using Sonarr.Http.REST;
 using Sonarr.Http.REST.Attributes;
 
 namespace Sonarr.Api.V3
 {
-    public abstract class ProviderControllerBase<TProviderResource, TBulkProviderResource, TProvider, TProviderDefinition> : RestController<TProviderResource>
+    public abstract class ProviderControllerBase<TProviderResource, TBulkProviderResource, TProvider, TProviderDefinition> : RestControllerWithSignalR<TProviderResource, TProviderDefinition>,
+        IHandle<ProviderAddedEvent<TProvider>>,
+        IHandle<ProviderUpdatedEvent<TProvider>>,
+        IHandle<ProviderDeletedEvent<TProvider>>
         where TProviderDefinition : ProviderDefinition, new()
         where TProvider : IProvider
         where TProviderResource : ProviderResource<TProviderResource>, new()
@@ -21,18 +29,20 @@ namespace Sonarr.Api.V3
         private readonly ProviderResourceMapper<TProviderResource, TProviderDefinition> _resourceMapper;
         private readonly ProviderBulkResourceMapper<TBulkProviderResource, TProviderDefinition> _bulkResourceMapper;
 
-        protected ProviderControllerBase(IProviderFactory<TProvider,
+        protected ProviderControllerBase(IBroadcastSignalRMessage signalRBroadcaster,
+            IProviderFactory<TProvider,
             TProviderDefinition> providerFactory,
             string resource,
             ProviderResourceMapper<TProviderResource, TProviderDefinition> resourceMapper,
             ProviderBulkResourceMapper<TBulkProviderResource, TProviderDefinition> bulkResourceMapper)
+            : base(signalRBroadcaster)
         {
             _providerFactory = providerFactory;
             _resourceMapper = resourceMapper;
             _bulkResourceMapper = bulkResourceMapper;
 
             SharedValidator.RuleFor(c => c.Name).NotEmpty();
-            SharedValidator.RuleFor(c => c.Name).Must((v, c) => !_providerFactory.All().Any(p => p.Name == c && p.Id != v.Id)).WithMessage("Should be unique");
+            SharedValidator.RuleFor(c => c.Name).Must((v, c) => !_providerFactory.All().Any(p => p.Name.EqualsIgnoreCase(c) && p.Id != v.Id)).WithMessage("Should be unique");
             SharedValidator.RuleFor(c => c.Implementation).NotEmpty();
             SharedValidator.RuleFor(c => c.ConfigContract).NotEmpty();
 
@@ -85,15 +95,20 @@ namespace Sonarr.Api.V3
         [RestPutById]
         [Consumes("application/json")]
         [Produces("application/json")]
-        public ActionResult<TProviderResource> UpdateProvider([FromBody] TProviderResource providerResource, [FromQuery] bool forceSave = false)
+        public ActionResult<TProviderResource> UpdateProvider([FromRoute] int id, [FromBody] TProviderResource providerResource, [FromQuery] bool forceSave = false)
         {
-            var existingDefinition = _providerFactory.Find(providerResource.Id);
+            // TODO: Remove fallback to Id from body in next API version bump
+            var existingDefinition = _providerFactory.Find(id) ?? _providerFactory.Find(providerResource.Id);
+
+            if (existingDefinition == null)
+            {
+                return NotFound();
+            }
+
             var providerDefinition = GetDefinition(providerResource, existingDefinition, true, !forceSave, false);
 
-            // Comparing via JSON string to eliminate the need for every provider implementation to implement equality checks.
             // Compare settings separately because they are not serialized with the definition.
-            var hasDefinitionChanged = STJson.ToJson(existingDefinition) != STJson.ToJson(providerDefinition) ||
-                                       STJson.ToJson(existingDefinition.Settings) != STJson.ToJson(providerDefinition.Settings);
+            var hasDefinitionChanged = !existingDefinition.Equals(providerDefinition) || !existingDefinition.Settings.Equals(providerDefinition.Settings);
 
             // Only test existing definitions if it is enabled and forceSave isn't set and the definition has changed.
             if (providerDefinition.Enable && !forceSave && hasDefinitionChanged)
@@ -106,7 +121,7 @@ namespace Sonarr.Api.V3
                 _providerFactory.Update(providerDefinition);
             }
 
-            return Accepted(providerResource.Id);
+            return Accepted(existingDefinition.Id);
         }
 
         [HttpPut("bulk")]
@@ -205,10 +220,10 @@ namespace Sonarr.Api.V3
         [SkipValidation(true, false)]
         [HttpPost("test")]
         [Consumes("application/json")]
-        public object Test([FromBody] TProviderResource providerResource)
+        public object Test([FromBody] TProviderResource providerResource, [FromQuery] bool forceTest = false)
         {
             var existingDefinition = providerResource.Id > 0 ? _providerFactory.Find(providerResource.Id) : null;
-            var providerDefinition = GetDefinition(providerResource, existingDefinition, true, true, true);
+            var providerDefinition = GetDefinition(providerResource, existingDefinition, true, !forceTest, true);
 
             Test(providerDefinition, true);
 
@@ -245,7 +260,7 @@ namespace Sonarr.Api.V3
         [HttpPost("action/{name}")]
         [Consumes("application/json")]
         [Produces("application/json")]
-        public IActionResult RequestAction(string name, [FromBody] TProviderResource providerResource)
+        public IActionResult RequestAction([FromRoute] string name, [FromBody] TProviderResource providerResource)
         {
             var existingDefinition = providerResource.Id > 0 ? _providerFactory.Find(providerResource.Id) : null;
             var providerDefinition = GetDefinition(providerResource, existingDefinition, false, false, false);
@@ -255,6 +270,24 @@ namespace Sonarr.Api.V3
             var data = _providerFactory.RequestAction(providerDefinition, name, query);
 
             return Content(data.ToJson(), "application/json");
+        }
+
+        [NonAction]
+        public virtual void Handle(ProviderAddedEvent<TProvider> message)
+        {
+            BroadcastResourceChange(ModelAction.Created, message.Definition.Id);
+        }
+
+        [NonAction]
+        public virtual void Handle(ProviderUpdatedEvent<TProvider> message)
+        {
+            BroadcastResourceChange(ModelAction.Updated, message.Definition.Id);
+        }
+
+        [NonAction]
+        public virtual void Handle(ProviderDeletedEvent<TProvider> message)
+        {
+            BroadcastResourceChange(ModelAction.Deleted, message.ProviderId);
         }
 
         private void Validate(TProviderDefinition definition, bool includeWarnings)

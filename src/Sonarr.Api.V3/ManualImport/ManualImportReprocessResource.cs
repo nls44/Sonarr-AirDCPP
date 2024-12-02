@@ -1,6 +1,6 @@
 using System.Collections.Generic;
-using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Languages;
+using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
 using Sonarr.Api.V3.CustomFormats;
 using Sonarr.Api.V3.Episodes;
@@ -21,6 +21,8 @@ namespace Sonarr.Api.V3.ManualImport
         public string DownloadId { get; set; }
         public List<CustomFormatResource> CustomFormats { get; set; }
         public int CustomFormatScore { get; set; }
-        public IEnumerable<Rejection> Rejections { get; set; }
+        public int IndexerFlags { get; set; }
+        public ReleaseType ReleaseType { get; set; }
+        public IEnumerable<ImportRejectionResource> Rejections { get; set; }
     }
 }

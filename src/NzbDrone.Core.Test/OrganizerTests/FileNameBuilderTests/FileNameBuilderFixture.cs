@@ -274,7 +274,7 @@ namespace NzbDrone.Core.Test.OrganizerTests.FileNameBuilderTests
         {
             _namingConfig.RenameEpisodes = false;
             _episodeFile.RelativePath = null;
-            _episodeFile.Path = @"C:\Test\Unsorted\Series - S01E01 - Test";
+            _episodeFile.Path = @"C:\Test\Unsorted\Series - S01E01 - Test".AsOsAgnostic();
 
             Subject.BuildFileName(new List<Episode> { _episode1 }, _series, _episodeFile)
                    .Should().Be(Path.GetFileNameWithoutExtension(_episodeFile.Path));
@@ -289,6 +289,20 @@ namespace NzbDrone.Core.Test.OrganizerTests.FileNameBuilderTests
 
             Subject.BuildFileName(new List<Episode> { _episode1 }, _series, _episodeFile)
                    .Should().Be("30.Rock.S01E01.xvid-LOL");
+        }
+
+        [Test]
+        public void should_replace_illegal_characters_when_renaming_is_disabled()
+        {
+            _namingConfig.RenameEpisodes = false;
+            _namingConfig.ReplaceIllegalCharacters = true;
+            _namingConfig.ColonReplacementFormat = ColonReplacementFormat.Smart;
+
+            _episodeFile.SceneName = "30.Rock.S01E01.xvid:LOL";
+            _episodeFile.RelativePath = "30 Rock - S01E01 - Test";
+
+            Subject.BuildFileName(new List<Episode> { _episode1 }, _series, _episodeFile)
+                .Should().Be("30.Rock.S01E01.xvid-LOL");
         }
 
         [Test]
@@ -989,6 +1003,37 @@ namespace NzbDrone.Core.Test.OrganizerTests.FileNameBuilderTests
             var result = Subject.BuildFileName(new List<Episode> { _episode1 }, _series, _episodeFile);
 
             result.Should().EndWith("HDR");
+        }
+
+        [Test]
+        public void should_replace_release_hash_with_stored_hash()
+        {
+            _namingConfig.StandardEpisodeFormat = "{Release Hash}";
+
+            _episodeFile.ReleaseHash = "ABCDEFGH";
+
+            Subject.BuildFileName(new List<Episode> { _episode1 }, _series, _episodeFile)
+                   .Should().Be("ABCDEFGH");
+        }
+
+        [Test]
+        public void should_replace_null_release_hash_with_empty_string()
+        {
+            _namingConfig.StandardEpisodeFormat = "{Release Hash}";
+
+            _episodeFile.ReleaseHash = null;
+
+            Subject.BuildFileName(new List<Episode> { _episode1 }, _series, _episodeFile)
+                   .Should().Be(string.Empty);
+        }
+
+        [Test]
+        public void should_maintain_ellipsis_in_naming_format()
+        {
+            _namingConfig.StandardEpisodeFormat = "{Series.Title}.S{season:00}.E{episode:00}...{Episode.CleanTitle}";
+
+            Subject.BuildFileName(new List<Episode> { _episode1 }, _series, _episodeFile)
+                .Should().Be("South.Park.S15.E06...City.Sushi");
         }
 
         private void GivenMediaInfoModel(string videoCodec = "h264",

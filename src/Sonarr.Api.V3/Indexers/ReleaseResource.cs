@@ -48,6 +48,7 @@ namespace Sonarr.Api.V3.Indexers
         public bool Rejected { get; set; }
         public int TvdbId { get; set; }
         public int TvRageId { get; set; }
+        public string ImdbId { get; set; }
         public IEnumerable<string> Rejections { get; set; }
         public DateTime PublishDate { get; set; }
         public string CommentUrl { get; set; }
@@ -65,6 +66,7 @@ namespace Sonarr.Api.V3.Indexers
         public int? Seeders { get; set; }
         public int? Leechers { get; set; }
         public DownloadProtocol Protocol { get; set; }
+        public int IndexerFlags { get; set; }
 
         public bool IsDaily { get; set; }
         public bool IsAbsoluteNumbering { get; set; }
@@ -100,6 +102,7 @@ namespace Sonarr.Api.V3.Indexers
             var parsedEpisodeInfo = model.RemoteEpisode.ParsedEpisodeInfo;
             var remoteEpisode = model.RemoteEpisode;
             var torrentInfo = (model.RemoteEpisode.Release as TorrentInfo) ?? new TorrentInfo();
+            var indexerFlags = torrentInfo.IndexerFlags;
 
             // TODO: Clean this mess up. don't mix data from multiple classes, use sub-resources instead? (Got a huge Deja Vu, didn't we talk about this already once?)
             return new ReleaseResource
@@ -134,7 +137,8 @@ namespace Sonarr.Api.V3.Indexers
                 Rejected = model.Rejected,
                 TvdbId = releaseInfo.TvdbId,
                 TvRageId = releaseInfo.TvRageId,
-                Rejections = model.Rejections.Select(r => r.Reason).ToList(),
+                ImdbId = releaseInfo.ImdbId,
+                Rejections = model.Rejections.Select(r => r.Message).ToList(),
                 PublishDate = releaseInfo.PublishDate,
                 CommentUrl = releaseInfo.CommentUrl,
                 DownloadUrl = releaseInfo.DownloadUrl,
@@ -152,6 +156,7 @@ namespace Sonarr.Api.V3.Indexers
                 Seeders = torrentInfo.Seeders,
                 Leechers = (torrentInfo.Peers.HasValue && torrentInfo.Seeders.HasValue) ? (torrentInfo.Peers.Value - torrentInfo.Seeders.Value) : (int?)null,
                 Protocol = releaseInfo.DownloadProtocol,
+                IndexerFlags = (int)indexerFlags,
 
                 IsDaily = parsedEpisodeInfo.IsDaily,
                 IsAbsoluteNumbering = parsedEpisodeInfo.IsAbsoluteNumbering,
@@ -171,7 +176,8 @@ namespace Sonarr.Api.V3.Indexers
                     MagnetUrl = resource.MagnetUrl,
                     InfoHash = resource.InfoHash,
                     Seeders = resource.Seeders,
-                    Peers = (resource.Seeders.HasValue && resource.Leechers.HasValue) ? (resource.Seeders + resource.Leechers) : null
+                    Peers = (resource.Seeders.HasValue && resource.Leechers.HasValue) ? (resource.Seeders + resource.Leechers) : null,
+                    IndexerFlags = (IndexerFlags)resource.IndexerFlags
                 };
             }
             else
@@ -190,6 +196,7 @@ namespace Sonarr.Api.V3.Indexers
             model.DownloadProtocol = resource.Protocol;
             model.TvdbId = resource.TvdbId;
             model.TvRageId = resource.TvRageId;
+            model.ImdbId = resource.ImdbId;
             model.PublishDate = resource.PublishDate.ToUniversalTime();
 
             return model;

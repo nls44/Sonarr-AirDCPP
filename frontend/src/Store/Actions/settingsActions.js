@@ -10,7 +10,9 @@ import downloadClientOptions from './Settings/downloadClientOptions';
 import downloadClients from './Settings/downloadClients';
 import general from './Settings/general';
 import importListExclusions from './Settings/importListExclusions';
+import importListOptions from './Settings/importListOptions';
 import importLists from './Settings/importLists';
+import indexerFlags from './Settings/indexerFlags';
 import indexerOptions from './Settings/indexerOptions';
 import indexers from './Settings/indexers';
 import languages from './Settings/languages';
@@ -33,8 +35,10 @@ export * from './Settings/delayProfiles';
 export * from './Settings/downloadClients';
 export * from './Settings/downloadClientOptions';
 export * from './Settings/general';
+export * from './Settings/importListOptions';
 export * from './Settings/importLists';
 export * from './Settings/importListExclusions';
+export * from './Settings/indexerFlags';
 export * from './Settings/indexerOptions';
 export * from './Settings/indexers';
 export * from './Settings/languages';
@@ -69,6 +73,8 @@ export const defaultState = {
   general: general.defaultState,
   importLists: importLists.defaultState,
   importListExclusions: importListExclusions.defaultState,
+  importListOptions: importListOptions.defaultState,
+  indexerFlags: indexerFlags.defaultState,
   indexerOptions: indexerOptions.defaultState,
   indexers: indexers.defaultState,
   languages: languages.defaultState,
@@ -85,7 +91,8 @@ export const defaultState = {
 };
 
 export const persistState = [
-  'settings.advancedSettings'
+  'settings.advancedSettings',
+  'settings.importListExclusions.pageSize'
 ];
 
 //
@@ -112,6 +119,8 @@ export const actionHandlers = handleThunks({
   ...general.actionHandlers,
   ...importLists.actionHandlers,
   ...importListExclusions.actionHandlers,
+  ...importListOptions.actionHandlers,
+  ...indexerFlags.actionHandlers,
   ...indexerOptions.actionHandlers,
   ...indexers.actionHandlers,
   ...languages.actionHandlers,
@@ -146,6 +155,8 @@ export const reducers = createHandleActions({
   ...general.reducers,
   ...importLists.reducers,
   ...importListExclusions.reducers,
+  ...importListOptions.reducers,
+  ...indexerFlags.reducers,
   ...indexerOptions.reducers,
   ...indexers.reducers,
   ...languages.reducers,
