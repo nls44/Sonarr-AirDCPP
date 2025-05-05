@@ -14,7 +14,7 @@ import Alert from 'Components/Alert';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
-import PageJumpBar from 'Components/Page/PageJumpBar';
+import PageJumpBar, { PageJumpBarItems } from 'Components/Page/PageJumpBar';
 import PageToolbar from 'Components/Page/Toolbar/PageToolbar';
 import PageToolbarButton from 'Components/Page/Toolbar/PageToolbarButton';
 import PageToolbarSection from 'Components/Page/Toolbar/PageToolbarSection';
@@ -145,7 +145,7 @@ const SeriesIndex = withScrollPosition((props: SeriesIndexProps) => {
   );
 
   const onFilterSelect = useCallback(
-    (value: string) => {
+    (value: string | number) => {
       dispatch(setSeriesFilter({ selectedFilterKey: value }));
     },
     [dispatch]
@@ -174,10 +174,11 @@ const SeriesIndex = withScrollPosition((props: SeriesIndexProps) => {
     [setJumpToCharacter]
   );
 
-  const jumpBarItems = useMemo(() => {
+  const jumpBarItems: PageJumpBarItems = useMemo(() => {
     // Reset if not sorting by sortTitle
     if (sortKey !== 'sortTitle') {
       return {
+        characters: {},
         order: [],
       };
     }

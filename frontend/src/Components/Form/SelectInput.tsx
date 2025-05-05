@@ -1,10 +1,16 @@
 import classNames from 'classnames';
-import React, { ChangeEvent, SyntheticEvent, useCallback } from 'react';
+import React, {
+  ChangeEvent,
+  ComponentProps,
+  SyntheticEvent,
+  useCallback,
+} from 'react';
 import { InputChanged } from 'typings/inputs';
 import styles from './SelectInput.css';
 
-interface SelectInputOption {
-  key: string;
+export interface SelectInputOption
+  extends Pick<ComponentProps<'option'>, 'disabled'> {
+  key: string | number;
   value: string | number | (() => string | number);
 }
 

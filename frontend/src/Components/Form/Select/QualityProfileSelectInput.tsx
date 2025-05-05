@@ -18,7 +18,7 @@ function createQualityProfilesSelector(
   includeMixed: boolean
 ) {
   return createSelector(
-    createSortedSectionSelector(
+    createSortedSectionSelector<QualityProfile, QualityProfilesAppState>(
       'settings.qualityProfiles',
       sortByProp<QualityProfile, 'name'>('name')
     ),
@@ -56,7 +56,7 @@ function createQualityProfilesSelector(
   );
 }
 
-interface QualityProfileSelectInputConnectorProps
+export interface QualityProfileSelectInputProps
   extends Omit<
     EnhancedSelectInputProps<
       EnhancedSelectInputValue<number | string>,
@@ -78,7 +78,7 @@ function QualityProfileSelectInput({
   includeMixed = false,
   onChange,
   ...otherProps
-}: QualityProfileSelectInputConnectorProps) {
+}: QualityProfileSelectInputProps) {
   const values = useSelector(
     createQualityProfilesSelector(
       includeNoChange,
@@ -88,13 +88,10 @@ function QualityProfileSelectInput({
   );
 
   const handleChange = useCallback(
-    ({ value: newValue }: EnhancedSelectInputChanged<string | number>) => {
-      onChange({
-        name,
-        value: newValue === 'noChange' ? value : newValue,
-      });
+    ({ value }: EnhancedSelectInputChanged<string | number>) => {
+      onChange({ name, value });
     },
-    [name, value, onChange]
+    [name, onChange]
   );
 
   useEffect(() => {

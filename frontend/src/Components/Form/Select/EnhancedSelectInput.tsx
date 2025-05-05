@@ -1,3 +1,13 @@
+import {
+  autoUpdate,
+  flip,
+  FloatingPortal,
+  size,
+  useClick,
+  useDismiss,
+  useFloating,
+  useInteractions,
+} from '@floating-ui/react';
 import classNames from 'classnames';
 import React, {
   ElementType,
@@ -6,24 +16,19 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
-import { Manager, Popper, Reference } from 'react-popper';
 import Icon from 'Components/Icon';
 import Link from 'Components/Link/Link';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
-import Measure from 'Components/Measure';
 import Modal from 'Components/Modal/Modal';
 import ModalBody from 'Components/Modal/ModalBody';
-import Portal from 'Components/Portal';
 import Scroller from 'Components/Scroller/Scroller';
-import { icons, scrollDirections, sizes } from 'Helpers/Props';
+import { icons } from 'Helpers/Props';
 import ArrayElement from 'typings/Helpers/ArrayElement';
 import { EnhancedSelectInputChanged, InputChanged } from 'typings/inputs';
 import { isMobile as isMobileUtil } from 'Utilities/browser';
 import * as keyCodes from 'Utilities/Constants/keyCodes';
-import getUniqueElementId from 'Utilities/getUniqueElementId';
 import TextInput from '../TextInput';
 import HintedSelectInputOption from './HintedSelectInputOption';
 import HintedSelectInputSelectedValue from './HintedSelectInputSelectedValue';
@@ -160,18 +165,46 @@ function EnhancedSelectInput<T extends EnhancedSelectInputValue<V>, V>(
     onOpen,
   } = props;
 
-  const updater = useRef<(() => void) | null>(null);
-  const buttonId = useMemo(() => getUniqueElementId(), []);
-  const optionsId = useMemo(() => getUniqueElementId(), []);
   const [selectedIndex, setSelectedIndex] = useState(
     getSelectedIndex(value, values)
   );
-  const [width, setWidth] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const isMobile = useMemo(() => isMobileUtil(), []);
 
   const isMultiSelect = Array.isArray(value);
   const selectedOption = getSelectedOption(selectedIndex, values);
+
+  const { refs, context, floatingStyles } = useFloating({
+    middleware: [
+      flip({
+        crossAxis: false,
+        mainAxis: true,
+      }),
+      size({
+        apply({ availableHeight, elements, rects }) {
+          Object.assign(elements.floating.style, {
+            minWidth: `${rects.reference.width}px`,
+            maxHeight: `${Math.max(
+              0,
+              Math.min(window.innerHeight / 2, availableHeight)
+            )}px`,
+          });
+        },
+      }),
+    ],
+    open: isOpen,
+    placement: 'bottom-start',
+    whileElementsMounted: autoUpdate,
+    onOpenChange: setIsOpen,
+  });
+
+  const click = useClick(context);
+  const dismiss = useDismiss(context);
+
+  const { getReferenceProps, getFloatingProps } = useInteractions([
+    click,
+    dismiss,
+  ]);
 
   const selectedValue = useMemo(() => {
     if (values.length) {
@@ -187,58 +220,9 @@ function EnhancedSelectInput<T extends EnhancedSelectInputValue<V>, V>(
     return '';
   }, [value, values, isMultiSelect]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleComputeMaxHeight = useCallback((data: any) => {
-    const { top, bottom } = data.offsets.reference;
-    const windowHeight = window.innerHeight;
-
-    if (/^bottom/.test(data.placement)) {
-      data.styles.maxHeight = windowHeight - bottom;
-    } else {
-      data.styles.maxHeight = top;
-    }
-
-    return data;
-  }, []);
-
-  const handleWindowClick = useCallback(
-    (event: MouseEvent) => {
-      const button = document.getElementById(buttonId);
-      const options = document.getElementById(optionsId);
-      const eventTarget = event.target as HTMLElement;
-
-      if (!button || !eventTarget.isConnected || isMobile) {
-        return;
-      }
-
-      if (
-        !button.contains(eventTarget) &&
-        options &&
-        !options.contains(eventTarget) &&
-        isOpen
-      ) {
-        setIsOpen(false);
-        window.removeEventListener('click', handleWindowClick);
-      }
-    },
-    [isMobile, isOpen, buttonId, optionsId, setIsOpen]
-  );
-
-  const addListener = useCallback(() => {
-    window.addEventListener('click', handleWindowClick);
-  }, [handleWindowClick]);
-
-  const removeListener = useCallback(() => {
-    window.removeEventListener('click', handleWindowClick);
-  }, [handleWindowClick]);
-
   const handlePress = useCallback(() => {
-    if (!isOpen && onOpen) {
-      onOpen();
-    }
-
-    setIsOpen(!isOpen);
-  }, [isOpen, setIsOpen, onOpen]);
+    setIsOpen((prevIsOpen) => !prevIsOpen);
+  }, []);
 
   const handleSelect = useCallback(
     (newValue: ArrayElement<V>) => {
@@ -295,10 +279,9 @@ function EnhancedSelectInput<T extends EnhancedSelectInputValue<V>, V>(
 
   const handleFocus = useCallback(() => {
     if (isOpen) {
-      removeListener();
       setIsOpen(false);
     }
-  }, [isOpen, setIsOpen, removeListener]);
+  }, [isOpen, setIsOpen]);
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLButtonElement>) => {
@@ -381,13 +364,6 @@ function EnhancedSelectInput<T extends EnhancedSelectInputValue<V>, V>(
     ]
   );
 
-  const handleMeasure = useCallback(
-    ({ width: newWidth }: { width: number }) => {
-      setWidth(newWidth);
-    },
-    [setWidth]
-  );
-
   const handleOptionsModalClose = useCallback(() => {
     setIsOpen(false);
   }, [setIsOpen]);
@@ -400,183 +376,133 @@ function EnhancedSelectInput<T extends EnhancedSelectInputValue<V>, V>(
   );
 
   useEffect(() => {
-    if (updater.current) {
-      updater.current();
-    }
-  });
-
-  useEffect(() => {
     if (isOpen) {
-      addListener();
-    } else {
-      removeListener();
+      onOpen?.();
     }
-
-    return removeListener;
-  }, [isOpen, addListener, removeListener]);
+  }, [isOpen, onOpen]);
 
   return (
-    <div>
-      <Manager>
-        <Reference>
-          {({ ref }) => (
-            <div ref={ref} id={buttonId}>
-              <Measure whitelist={['width']} onMeasure={handleMeasure}>
-                {isEditable && typeof value === 'string' ? (
-                  <div className={styles.editableContainer}>
-                    <TextInput
-                      className={className}
-                      name={name}
-                      value={value}
-                      readOnly={isDisabled}
-                      hasError={hasError}
-                      hasWarning={hasWarning}
-                      onFocus={handleFocus}
-                      onBlur={handleBlur}
-                      onChange={handleEditChange}
-                    />
-                    <Link
-                      className={classNames(
-                        styles.dropdownArrowContainerEditable,
-                        isDisabled
-                          ? styles.dropdownArrowContainerDisabled
-                          : styles.dropdownArrowContainer
-                      )}
-                      onPress={handlePress}
-                    >
-                      {isFetching ? (
-                        <LoadingIndicator
-                          className={styles.loading}
-                          size={20}
-                        />
-                      ) : null}
+    <>
+      <div ref={refs.setReference} {...getReferenceProps()}>
+        {isEditable && typeof value === 'string' ? (
+          <div className={styles.editableContainer}>
+            <TextInput
+              className={className}
+              name={name}
+              value={value}
+              readOnly={isDisabled}
+              hasError={hasError}
+              hasWarning={hasWarning}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              onChange={handleEditChange}
+            />
+            <Link
+              className={classNames(
+                styles.dropdownArrowContainerEditable,
+                isDisabled
+                  ? styles.dropdownArrowContainerDisabled
+                  : styles.dropdownArrowContainer
+              )}
+              onPress={handlePress}
+            >
+              {isFetching ? (
+                <LoadingIndicator className={styles.loading} size={20} />
+              ) : null}
 
-                      {isFetching ? null : <Icon name={icons.CARET_DOWN} />}
-                    </Link>
-                  </div>
-                ) : (
-                  <Link
-                    className={classNames(
-                      className,
-                      hasError && styles.hasError,
-                      hasWarning && styles.hasWarning,
-                      isDisabled && disabledClassName
-                    )}
-                    isDisabled={isDisabled}
-                    onBlur={handleBlur}
-                    onKeyDown={handleKeyDown}
-                    onPress={handlePress}
-                  >
-                    <SelectedValueComponent
-                      values={values}
-                      {...selectedValueOptions}
-                      selectedValue={selectedValue}
-                      isDisabled={isDisabled}
-                      isMultiSelect={isMultiSelect}
-                    >
-                      {selectedOption ? selectedOption.value : selectedValue}
-                    </SelectedValueComponent>
-
-                    <div
-                      className={
-                        isDisabled
-                          ? styles.dropdownArrowContainerDisabled
-                          : styles.dropdownArrowContainer
-                      }
-                    >
-                      {isFetching ? (
-                        <LoadingIndicator
-                          className={styles.loading}
-                          size={20}
-                        />
-                      ) : null}
-
-                      {isFetching ? null : <Icon name={icons.CARET_DOWN} />}
-                    </div>
-                  </Link>
-                )}
-              </Measure>
-            </div>
-          )}
-        </Reference>
-        <Portal>
-          <Popper
-            placement="bottom-start"
-            modifiers={{
-              computeMaxHeight: {
-                order: 851,
-                enabled: true,
-                fn: handleComputeMaxHeight,
-              },
-            }}
+              {isFetching ? null : <Icon name={icons.CARET_DOWN} />}
+            </Link>
+          </div>
+        ) : (
+          <Link
+            className={classNames(
+              className,
+              hasError && styles.hasError,
+              hasWarning && styles.hasWarning,
+              isDisabled && disabledClassName
+            )}
+            isDisabled={isDisabled}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            onPress={handlePress}
           >
-            {({ ref, style, scheduleUpdate }) => {
-              updater.current = scheduleUpdate;
+            <SelectedValueComponent
+              values={values}
+              {...selectedValueOptions}
+              selectedValue={selectedValue}
+              isDisabled={isDisabled}
+              isMultiSelect={isMultiSelect}
+            >
+              {selectedOption ? selectedOption.value : selectedValue}
+            </SelectedValueComponent>
+
+            <div
+              className={
+                isDisabled
+                  ? styles.dropdownArrowContainerDisabled
+                  : styles.dropdownArrowContainer
+              }
+            >
+              {isFetching ? (
+                <LoadingIndicator className={styles.loading} size={20} />
+              ) : null}
+
+              {isFetching ? null : <Icon name={icons.CARET_DOWN} />}
+            </div>
+          </Link>
+        )}
+      </div>
+
+      {!isMobile && isOpen ? (
+        <FloatingPortal id="portal-root">
+          <Scroller
+            ref={refs.setFloating}
+            className={styles.options}
+            style={floatingStyles}
+            {...getFloatingProps()}
+          >
+            {values.map((v, index) => {
+              const hasParent = v.parentKey !== undefined;
+              const depth = hasParent ? 1 : 0;
+              const parentSelected =
+                v.parentKey !== undefined &&
+                Array.isArray(value) &&
+                value.includes(v.parentKey);
+
+              const { key, ...other } = v;
 
               return (
-                <div
-                  ref={ref}
-                  id={optionsId}
-                  className={styles.optionsContainer}
-                  style={{
-                    ...style,
-                    minWidth: width,
-                  }}
+                <OptionComponent
+                  key={v.key}
+                  id={v.key}
+                  depth={depth}
+                  isSelected={isSelectedItem(index, value, values)}
+                  isDisabled={parentSelected}
+                  isMultiSelect={isMultiSelect}
+                  {...valueOptions}
+                  {...other}
+                  isMobile={false}
+                  onSelect={handleSelect}
                 >
-                  {isOpen && !isMobile ? (
-                    <Scroller
-                      className={styles.options}
-                      style={{
-                        maxHeight: style.maxHeight,
-                      }}
-                    >
-                      {values.map((v, index) => {
-                        const hasParent = v.parentKey !== undefined;
-                        const depth = hasParent ? 1 : 0;
-                        const parentSelected =
-                          v.parentKey !== undefined &&
-                          Array.isArray(value) &&
-                          value.includes(v.parentKey);
-
-                        const { key, ...other } = v;
-
-                        return (
-                          <OptionComponent
-                            key={v.key}
-                            id={v.key}
-                            depth={depth}
-                            isSelected={isSelectedItem(index, value, values)}
-                            isDisabled={parentSelected}
-                            isMultiSelect={isMultiSelect}
-                            {...valueOptions}
-                            {...other}
-                            isMobile={false}
-                            onSelect={handleSelect}
-                          >
-                            {v.value}
-                          </OptionComponent>
-                        );
-                      })}
-                    </Scroller>
-                  ) : null}
-                </div>
+                  {v.value}
+                </OptionComponent>
               );
-            }}
-          </Popper>
-        </Portal>
-      </Manager>
+            })}
+          </Scroller>
+        </FloatingPortal>
+      ) : null}
 
       {isMobile ? (
         <Modal
           className={styles.optionsModal}
-          size={sizes.EXTRA_SMALL}
+          size="extraSmall"
           isOpen={isOpen}
           onModalClose={handleOptionsModalClose}
         >
           <ModalBody
             className={styles.optionsModalBody}
             innerClassName={styles.optionsInnerModalBody}
-            scrollDirection={scrollDirections.NONE}
+            scrollDirection="none"
           >
             <Scroller className={styles.optionsModalScroller}>
               <div className={styles.mobileCloseButtonContainer}>
@@ -619,7 +545,7 @@ function EnhancedSelectInput<T extends EnhancedSelectInputValue<V>, V>(
           </ModalBody>
         </Modal>
       ) : null}
-    </div>
+    </>
   );
 }
 

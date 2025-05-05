@@ -10,6 +10,7 @@ public enum DownloadRejectionReason
     Error,
     DecisionError,
     MinimumAgeDelay,
+    MinimumAgeDelayPushed,
     SeriesNotMonitored,
     EpisodeNotMonitored,
     HistoryRecentCutoffMet,
@@ -20,6 +21,7 @@ public enum DownloadRejectionReason
     HistoryCustomFormatCutoffMet,
     HistoryCustomFormatScore,
     HistoryCustomFormatScoreIncrement,
+    HistoryUpgradesNotAllowed,
     NoMatchingTag,
     PropersDisabled,
     ProperForOldFile,
@@ -53,7 +55,7 @@ public enum DownloadRejectionReason
     QueueCustomFormatCutoffMet,
     QueueCustomFormatScore,
     QueueCustomFormatScoreIncrement,
-    QueueNoUpgrades,
+    QueueUpgradesNotAllowed,
     QueuePropersDisabled,
     Raw,
     MustContainMissing,
@@ -72,4 +74,5 @@ public enum DownloadRejectionReason
     DiskCustomFormatCutoffMet,
     DiskCustomFormatScore,
     DiskCustomFormatScoreIncrement,
+    DiskUpgradesNotAllowed
 }

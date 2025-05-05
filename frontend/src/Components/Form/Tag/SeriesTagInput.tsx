@@ -12,10 +12,10 @@ interface SeriesTag extends TagBase {
   name: string;
 }
 
-interface SeriesTagInputProps {
+export interface SeriesTagInputProps<V> {
   name: string;
-  value: number | number[];
-  onChange: (change: InputChanged<number | number[]>) => void;
+  value: V;
+  onChange: (change: InputChanged<V>) => void;
 }
 
 const VALID_TAG_REGEX = new RegExp('[^-_a-z0-9]', 'i');
@@ -23,7 +23,7 @@ const VALID_TAG_REGEX = new RegExp('[^-_a-z0-9]', 'i');
 function isValidTag(tagName: string) {
   try {
     return !VALID_TAG_REGEX.test(tagName);
-  } catch (e) {
+  } catch {
     return false;
   }
 }
@@ -59,20 +59,20 @@ function createSeriesTagsSelector(tags: number[]) {
   });
 }
 
-export default function SeriesTagInput({
+export default function SeriesTagInput<V extends number | number[]>({
   name,
   value,
   onChange,
-}: SeriesTagInputProps) {
+}: SeriesTagInputProps<V>) {
   const dispatch = useDispatch();
   const isArray = Array.isArray(value);
 
   const arrayValue = useMemo(() => {
     if (isArray) {
-      return value;
+      return value as number[];
     }
 
-    return value === 0 ? [] : [value];
+    return value === 0 ? [] : [value as number];
   }, [isArray, value]);
 
   const { tags, tagList, allTags } = useSelector(
@@ -82,11 +82,11 @@ export default function SeriesTagInput({
   const handleTagCreated = useCallback(
     (tag: SeriesTag) => {
       if (isArray) {
-        onChange({ name, value: [...value, tag.id] });
+        onChange({ name, value: [...value, tag.id] as V });
       } else {
         onChange({
           name,
-          value: tag.id,
+          value: tag.id as V,
         });
       }
     },
@@ -97,9 +97,9 @@ export default function SeriesTagInput({
     (newTag: SeriesTag) => {
       if (newTag.id) {
         if (isArray) {
-          onChange({ name, value: [...value, newTag.id] });
+          onChange({ name, value: [...value, newTag.id] as V });
         } else {
-          onChange({ name, value: newTag.id });
+          onChange({ name, value: newTag.id as V });
         }
 
         return;
@@ -125,9 +125,9 @@ export default function SeriesTagInput({
         const newValue = value.slice();
         newValue.splice(index, 1);
 
-        onChange({ name, value: newValue });
+        onChange({ name, value: newValue as V });
       } else {
-        onChange({ name, value: 0 });
+        onChange({ name, value: 0 as V });
       }
     },
     [name, value, isArray, onChange]

@@ -8,6 +8,7 @@ interface CssExports {
   'details': string;
   'detailsLabel': string;
   'fileCountMessage': string;
+  'genres': string;
   'header': string;
   'headerContent': string;
   'info': string;
@@ -23,6 +24,7 @@ interface CssExports {
   'runtime': string;
   'seriesNavigationButton': string;
   'seriesNavigationButtons': string;
+  'seriesProgressLabel': string;
   'sizeOnDisk': string;
   'statusName': string;
   'tags': string;

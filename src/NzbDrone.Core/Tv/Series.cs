@@ -17,6 +17,8 @@ namespace NzbDrone.Core.Tv
             Seasons = new List<Season>();
             Tags = new HashSet<int>();
             OriginalLanguage = Language.English;
+            MalIds = new HashSet<int>();
+            AniListIds = new HashSet<int>();
         }
 
         public int TvdbId { get; set; }
@@ -32,6 +34,8 @@ namespace NzbDrone.Core.Tv
         }
 
         public string CustomTitle { get; set; }
+        public HashSet<int> MalIds { get; set; }
+        public HashSet<int> AniListIds { get; set; }
         public string CleanTitle { get; set; }
         public string SortTitle { get; set; }
         public SeriesStatusType Status { get; set; }

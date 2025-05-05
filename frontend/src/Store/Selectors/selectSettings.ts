@@ -1,4 +1,4 @@
-import { cloneDeep, isEmpty } from 'lodash';
+import { cloneDeep } from 'lodash';
 import { Error } from 'App/State/AppSectionState';
 import Field from 'typings/Field';
 import {
@@ -10,13 +10,14 @@ import {
   ValidationFailure,
   ValidationWarning,
 } from 'typings/pending';
+import isEmpty from 'Utilities/Object/isEmpty';
 
 interface ValidationFailures {
   errors: ValidationError[];
   warnings: ValidationWarning[];
 }
 
-function getValidationFailures(saveError?: Error): ValidationFailures {
+function getValidationFailures(saveError?: Error | null): ValidationFailures {
   if (!saveError || saveError.status !== 400) {
     return {
       errors: [],
@@ -68,15 +69,15 @@ function mapFailure(failure: ValidationFailure): Failure {
   };
 }
 
-interface ModelBaseSetting {
+export interface ModelBaseSetting {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [id: string]: any;
 }
 
 function selectSettings<T extends ModelBaseSetting>(
   item: T,
-  pendingChanges: Partial<ModelBaseSetting>,
-  saveError?: Error
+  pendingChanges?: Partial<ModelBaseSetting>,
+  saveError?: Error | null
 ) {
   const { errors, warnings } = getValidationFailures(saveError);
 
@@ -105,7 +106,7 @@ function selectSettings<T extends ModelBaseSetting>(
         warnings: getFailures(warnings, key),
       };
 
-      if (pendingChanges.hasOwnProperty(key)) {
+      if (pendingChanges?.hasOwnProperty(key)) {
         setting.previousValue = setting.value;
         setting.value = pendingChanges[key];
         setting.pending = true;
@@ -126,7 +127,7 @@ function selectSettings<T extends ModelBaseSetting>(
           f
         );
 
-        if ('fields' in pendingChanges) {
+        if (pendingChanges && 'fields' in pendingChanges) {
           const pendingChangesFields = pendingChanges.fields as Record<
             string,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any

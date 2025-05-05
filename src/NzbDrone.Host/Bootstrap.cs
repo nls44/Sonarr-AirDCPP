@@ -39,6 +39,7 @@ namespace NzbDrone.Host
             "Sonarr.Core",
             "Sonarr.SignalR",
             "Sonarr.Api.V3",
+            "Sonarr.Api.V5",
             "Sonarr.Http"
         };
 
@@ -253,7 +254,7 @@ namespace NzbDrone.Host
             {
                 return new ConfigurationBuilder()
                     .AddXmlFile(configPath, optional: true, reloadOnChange: false)
-                    .AddInMemoryCollection(new List<KeyValuePair<string, string>> { new ("dataProtectionFolder", appFolder.GetDataProtectionPath()) })
+                    .AddInMemoryCollection(new List<KeyValuePair<string, string>> { new("dataProtectionFolder", appFolder.GetDataProtectionPath()) })
                     .AddEnvironmentVariables()
                     .Build();
             }

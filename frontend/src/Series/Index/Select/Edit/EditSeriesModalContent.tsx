@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import FormGroup from 'Components/Form/FormGroup';
 import FormInputGroup from 'Components/Form/FormInputGroup';
 import FormLabel from 'Components/Form/FormLabel';
+import { EnhancedSelectInputValue } from 'Components/Form/Select/EnhancedSelectInput';
 import Button from 'Components/Link/Button';
 import ModalBody from 'Components/Modal/ModalBody';
 import ModalContent from 'Components/Modal/ModalContent';
@@ -9,6 +10,7 @@ import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import { inputTypes } from 'Helpers/Props';
 import MoveSeriesModal from 'Series/MoveSeries/MoveSeriesModal';
+import { InputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
 import styles from './EditSeriesModalContent.css';
 
@@ -30,7 +32,7 @@ interface EditSeriesModalContentProps {
 
 const NO_CHANGE = 'noChange';
 
-const monitoredOptions = [
+const monitoredOptions: EnhancedSelectInputValue<string>[] = [
   {
     key: NO_CHANGE,
     get value() {
@@ -52,7 +54,7 @@ const monitoredOptions = [
   },
 ];
 
-const seasonFolderOptions = [
+const seasonFolderOptions: EnhancedSelectInputValue<string>[] = [
   {
     key: NO_CHANGE,
     get value() {
@@ -142,25 +144,25 @@ function EditSeriesModalContent(props: EditSeriesModalContentProps) {
   );
 
   const onInputChange = useCallback(
-    ({ name, value }: { name: string; value: string }) => {
+    ({ name, value }: InputChanged) => {
       switch (name) {
         case 'monitored':
-          setMonitored(value);
+          setMonitored(value as string);
           break;
         case 'monitorNewItems':
-          setMonitorNewItems(value);
+          setMonitorNewItems(value as string);
           break;
         case 'qualityProfileId':
-          setQualityProfileId(value);
+          setQualityProfileId(value as string);
           break;
         case 'seriesType':
-          setSeriesType(value);
+          setSeriesType(value as string);
           break;
         case 'seasonFolder':
-          setSeasonFolder(value);
+          setSeasonFolder(value as string);
           break;
         case 'rootFolderPath':
-          setRootFolderPath(value);
+          setRootFolderPath(value as string);
           break;
         default:
           console.warn('EditSeriesModalContent Unknown Input');

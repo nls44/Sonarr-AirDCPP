@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using DryIoc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -25,6 +27,7 @@ using NzbDrone.Host.AccessControl;
 using NzbDrone.Http.Authentication;
 using NzbDrone.SignalR;
 using Sonarr.Api.V3.System;
+using Sonarr.Api.V5.Series;
 using Sonarr.Http;
 using Sonarr.Http.Authentication;
 using Sonarr.Http.ClientSchema;
@@ -87,7 +90,10 @@ namespace NzbDrone.Host
             {
                 options.ReturnHttpNotAcceptable = true;
             })
+
+            // Register all controllers from the API and HTTP projects
             .AddApplicationPart(typeof(SystemController).Assembly)
+            .AddApplicationPart(typeof(SeriesLookupController).Assembly)
             .AddApplicationPart(typeof(StaticResourceController).Assembly)
             .AddJsonOptions(options =>
             {
@@ -102,6 +108,18 @@ namespace NzbDrone.Host
                     Version = "3.0.0",
                     Title = "Sonarr",
                     Description = "Sonarr API docs - The v3 API docs apply to both v3 and v4 versions of Sonarr. Some functionality may only be available in v4 of the Sonarr application.",
+                    License = new OpenApiLicense
+                    {
+                        Name = "GPL-3.0",
+                        Url = new Uri("https://github.com/Sonarr/Sonarr/blob/develop/LICENSE")
+                    }
+                });
+
+                c.SwaggerDoc("v5", new OpenApiInfo
+                {
+                    Version = "5.0.0",
+                    Title = "Sonarr",
+                    Description = "Sonarr API docs - The v5 API docs apply to Sonarr v5 only.",
                     License = new OpenApiLicense
                     {
                         Name = "GPL-3.0",
@@ -162,6 +180,37 @@ namespace NzbDrone.Host
                 });
 
                 c.DescribeAllParametersInCamelCase();
+
+                // Generate docs based on the controller's API version
+                c.DocInclusionPredicate((docName, apiDesc) =>
+                {
+                    Type type = null;
+
+                    if (apiDesc.ActionDescriptor is ControllerActionDescriptor controllerActionDescriptor)
+                    {
+                        type = controllerActionDescriptor.ControllerTypeInfo;
+                    }
+
+                    if (type == null)
+                    {
+                        return false;
+                    }
+
+                    var versions = new List<int>();
+
+                    versions.AddRange(type
+                        .GetCustomAttributes(true)
+                        .OfType<VersionedApiControllerAttribute>()
+                        .Select(attr => attr.Version));
+
+                    versions.AddRange(type
+                        .GetCustomAttributes(true)
+                        .OfType<VersionedFeedControllerAttribute>()
+                        .Select(attr => attr.Version));
+
+                    // Return anything with no version or a matching version
+                    return !versions.Any() || versions.Any(v => $"v{v}" == docName);
+                });
             });
 
             services
@@ -265,7 +314,7 @@ namespace NzbDrone.Host
             app.UseMiddleware<StartingUpMiddleware>();
             app.UseMiddleware<CacheHeaderMiddleware>();
             app.UseMiddleware<IfModifiedMiddleware>();
-            app.UseMiddleware<BufferingMiddleware>(new List<string> { "/api/v3/command" });
+            app.UseMiddleware<BufferingMiddleware>(new List<string> { "/api/v3/command", "/api/v5/command" });
 
             app.UseWebSockets();
 

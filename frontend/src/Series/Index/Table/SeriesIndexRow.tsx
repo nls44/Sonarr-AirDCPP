@@ -8,11 +8,11 @@ import HeartRating from 'Components/HeartRating';
 import IconButton from 'Components/Link/IconButton';
 import Link from 'Components/Link/Link';
 import SpinnerIconButton from 'Components/Link/SpinnerIconButton';
+import SeriesTagList from 'Components/SeriesTagList';
 import RelativeDateCell from 'Components/Table/Cells/RelativeDateCell';
 import VirtualTableRowCell from 'Components/Table/Cells/VirtualTableRowCell';
 import VirtualTableSelectCell from 'Components/Table/Cells/VirtualTableSelectCell';
 import Column from 'Components/Table/Column';
-import TagListConnector from 'Components/TagListConnector';
 import { icons } from 'Helpers/Props';
 import DeleteSeriesModal from 'Series/Delete/DeleteSeriesModal';
 import EditSeriesModal from 'Series/Edit/EditSeriesModal';
@@ -97,7 +97,7 @@ function SeriesIndexRow(props: SeriesIndexRowProps) {
     dispatch(
       executeCommand({
         name: REFRESH_SERIES,
-        seriesId,
+        seriesIds: [seriesId],
       })
     );
   }, [seriesId, dispatch]);
@@ -432,7 +432,7 @@ function SeriesIndexRow(props: SeriesIndexRowProps) {
         if (name === 'tags') {
           return (
             <VirtualTableRowCell key={name} className={styles[name]}>
-              <TagListConnector tags={tags} />
+              <SeriesTagList tags={tags} />
             </VirtualTableRowCell>
           );
         }

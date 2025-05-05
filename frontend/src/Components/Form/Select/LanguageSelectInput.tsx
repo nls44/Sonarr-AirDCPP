@@ -1,35 +1,43 @@
 import React, { useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import Language from 'Language/Language';
-import createFilteredLanguagesSelector from 'Store/Selectors/createFilteredLanguagesSelector';
+import createLanguagesSelector from 'Store/Selectors/createLanguagesSelector';
 import translate from 'Utilities/String/translate';
 import EnhancedSelectInput, {
   EnhancedSelectInputValue,
 } from './EnhancedSelectInput';
 
-interface LanguageSelectInputOnChangeProps {
+export interface LanguageSelectInputOnChangeProps {
   name: string;
   value: number | string | Language;
 }
 
-interface LanguageSelectInputProps {
+export interface LanguageSelectInputProps {
+  className?: string;
   name: string;
   value: number | string | Language;
-  includeNoChange: boolean;
+  includeNoChange?: boolean;
   includeNoChangeDisabled?: boolean;
-  includeMixed: boolean;
+  includeMixed?: boolean;
+  isDisabled?: boolean;
   onChange: (payload: LanguageSelectInputOnChangeProps) => void;
 }
 
 export default function LanguageSelectInput({
   value,
-  includeNoChange,
+  includeNoChange = false,
   includeNoChangeDisabled,
-  includeMixed,
+  includeMixed = false,
   onChange,
   ...otherProps
 }: LanguageSelectInputProps) {
-  const { items } = useSelector(createFilteredLanguagesSelector(true));
+  const { items } = useSelector(
+    createLanguagesSelector({
+      Any: true,
+      Original: true,
+      Unknown: true,
+    })
+  );
 
   const values = useMemo(() => {
     const result: EnhancedSelectInputValue<number | string>[] = items.map(

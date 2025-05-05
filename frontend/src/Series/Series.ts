@@ -36,6 +36,7 @@ export interface Statistics {
   releaseGroups: string[];
   sizeOnDisk: number;
   totalEpisodeCount: number;
+  lastAired?: string;
 }
 
 export interface Season {
@@ -91,7 +92,7 @@ interface Series extends ModelBase {
   seasons: Season[];
   seriesType: SeriesType;
   sortTitle: string;
-  statistics: Statistics;
+  statistics?: Statistics;
   status: SeriesStatus;
   tags: number[];
   title: string;

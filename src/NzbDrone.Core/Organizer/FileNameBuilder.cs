@@ -305,7 +305,7 @@ namespace NzbDrone.Core.Organizer
             title = ScenifyReplaceChars.Replace(title, " ");
             title = ScenifyRemoveChars.Replace(title, string.Empty);
 
-            return title;
+            return title.RemoveDiacritics();
         }
 
         public static string TitleThe(string title)
@@ -332,7 +332,7 @@ namespace NzbDrone.Core.Organizer
                 return title;
             }
 
-            // Regex match incase the year in the title doesn't match the year, for whatever reason.
+            // Regex match in case the year in the title doesn't match the year, for whatever reason.
             if (YearRegex.IsMatch(title))
             {
                 return title;
@@ -349,7 +349,7 @@ namespace NzbDrone.Core.Organizer
                 return CleanTitleThe(title);
             }
 
-            // Regex match incase the year in the title doesn't match the year, for whatever reason.
+            // Regex match in case the year in the title doesn't match the year, for whatever reason.
             if (YearRegex.IsMatch(title))
             {
                 var splitReturn = YearRegex.Split(title);

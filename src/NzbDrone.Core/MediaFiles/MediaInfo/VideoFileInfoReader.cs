@@ -21,8 +21,8 @@ namespace NzbDrone.Core.MediaFiles.MediaInfo
         private readonly Logger _logger;
         private readonly List<FFProbePixelFormat> _pixelFormats;
 
-        public const int MINIMUM_MEDIA_INFO_SCHEMA_REVISION = 8;
-        public const int CURRENT_MEDIA_INFO_SCHEMA_REVISION = 11;
+        public const int MINIMUM_MEDIA_INFO_SCHEMA_REVISION = 12;
+        public const int CURRENT_MEDIA_INFO_SCHEMA_REVISION = 12;
 
         private static readonly string[] ValidHdrColourPrimaries = { "bt2020" };
         private static readonly string[] HlgTransferFunctions = { "arib-std-b67" };
@@ -81,7 +81,7 @@ namespace NzbDrone.Core.MediaFiles.MediaInfo
                 mediaInfoModel.VideoFormat = primaryVideoStream?.CodecName;
                 mediaInfoModel.VideoCodecID = primaryVideoStream?.CodecTagString;
                 mediaInfoModel.VideoProfile = primaryVideoStream?.Profile;
-                mediaInfoModel.VideoBitrate = primaryVideoStream?.BitRate ?? 0;
+                mediaInfoModel.VideoBitrate = GetBitrate(primaryVideoStream);
                 mediaInfoModel.VideoBitDepth = GetPixelFormat(primaryVideoStream?.PixelFormat)?.Components.Min(x => x.BitDepth) ?? 8;
                 mediaInfoModel.VideoColourPrimaries = primaryVideoStream?.ColorPrimaries;
                 mediaInfoModel.VideoTransferCharacteristics = primaryVideoStream?.ColorTransfer;
@@ -91,7 +91,7 @@ namespace NzbDrone.Core.MediaFiles.MediaInfo
                 mediaInfoModel.AudioFormat = analysis.PrimaryAudioStream?.CodecName;
                 mediaInfoModel.AudioCodecID = analysis.PrimaryAudioStream?.CodecTagString;
                 mediaInfoModel.AudioProfile = analysis.PrimaryAudioStream?.Profile;
-                mediaInfoModel.AudioBitrate = analysis.PrimaryAudioStream?.BitRate ?? 0;
+                mediaInfoModel.AudioBitrate = GetBitrate(analysis.PrimaryAudioStream);
                 mediaInfoModel.RunTime = GetBestRuntime(analysis.PrimaryAudioStream?.Duration, primaryVideoStream?.Duration, analysis.Format.Duration);
                 mediaInfoModel.AudioStreamCount = analysis.AudioStreams.Count;
                 mediaInfoModel.AudioChannels = analysis.PrimaryAudioStream?.Channels ?? 0;
@@ -117,14 +117,14 @@ namespace NzbDrone.Core.MediaFiles.MediaInfo
                 // if it looks like PQ10 or similar HDR, do a frame analysis to figure out which type it is
                 if (PqTransferFunctions.Contains(mediaInfoModel.VideoTransferCharacteristics))
                 {
-                    var frameOutput = FFProbe.GetFrameJson(filename, ffOptions: new () { ExtraArguments = $"-read_intervals \"%+#1\" -select_streams v:{primaryVideoStream?.Index ?? 0}" });
+                    var frameOutput = FFProbe.GetFrameJson(filename, ffOptions: new() { ExtraArguments = $"-read_intervals \"%+#1\" -select_streams v:{primaryVideoStream?.Index ?? 0}" });
                     mediaInfoModel.RawFrameData = frameOutput;
 
                     frames = FFProbe.AnalyseFrameJson(frameOutput);
                 }
 
-                var streamSideData = primaryVideoStream?.SideDataList ?? new ();
-                var framesSideData = frames?.Frames?.Count > 0 ? frames?.Frames[0]?.SideDataList ?? new () : new ();
+                var streamSideData = primaryVideoStream?.SideDataList ?? new();
+                var framesSideData = frames?.Frames?.Count > 0 ? frames?.Frames[0]?.SideDataList ?? new() : new();
 
                 var sideData = streamSideData.Concat(framesSideData).ToList();
                 mediaInfoModel.VideoHdrFormat = GetHdrFormat(mediaInfoModel.VideoBitDepth, mediaInfoModel.VideoColourPrimaries, mediaInfoModel.VideoTransferCharacteristics, sideData);
@@ -159,6 +159,21 @@ namespace NzbDrone.Core.MediaFiles.MediaInfo
             }
 
             return video.Value;
+        }
+
+        private static long GetBitrate(MediaStream mediaStream)
+        {
+            if (mediaStream?.BitRate is > 0)
+            {
+                return mediaStream.BitRate;
+            }
+
+            if ((mediaStream?.Tags?.TryGetValue("BPS", out var bitratePerSecond) ?? false) && bitratePerSecond.IsNotNullOrWhiteSpace())
+            {
+                return Convert.ToInt64(bitratePerSecond);
+            }
+
+            return 0;
         }
 
         private VideoStream GetPrimaryVideoStream(IMediaAnalysis mediaAnalysis)

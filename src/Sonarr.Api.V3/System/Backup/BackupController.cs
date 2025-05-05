@@ -20,7 +20,7 @@ namespace Sonarr.Api.V3.System.Backup
         private readonly IAppFolderInfo _appFolderInfo;
         private readonly IDiskProvider _diskProvider;
 
-        private static readonly List<string> ValidExtensions = new () { ".zip", ".db", ".xml" };
+        private static readonly List<string> ValidExtensions = new() { ".zip", ".db", ".xml" };
 
         public BackupController(IBackupService backupService,
                             IAppFolderInfo appFolderInfo,
@@ -50,7 +50,7 @@ namespace Sonarr.Api.V3.System.Backup
         }
 
         [RestDeleteById]
-        public void DeleteBackup(int id)
+        public object DeleteBackup(int id)
         {
             var backup = GetBackup(id);
 
@@ -67,6 +67,8 @@ namespace Sonarr.Api.V3.System.Backup
             }
 
             _diskProvider.DeleteFile(path);
+
+            return new { };
         }
 
         [HttpPost("restore/{id:int}")]

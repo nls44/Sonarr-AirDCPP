@@ -6,7 +6,7 @@ import { REFRESH_SERIES, SERIES_SEARCH } from 'Commands/commandNames';
 import IconButton from 'Components/Link/IconButton';
 import Link from 'Components/Link/Link';
 import SpinnerIconButton from 'Components/Link/SpinnerIconButton';
-import TagListConnector from 'Components/TagListConnector';
+import SeriesTagList from 'Components/SeriesTagList';
 import { icons } from 'Helpers/Props';
 import DeleteSeriesModal from 'Series/Delete/DeleteSeriesModal';
 import EditSeriesModal from 'Series/Edit/EditSeriesModal';
@@ -92,7 +92,7 @@ function SeriesIndexOverview(props: SeriesIndexOverviewProps) {
     dispatch(
       executeCommand({
         name: REFRESH_SERIES,
-        seriesId,
+        seriesIds: [seriesId],
       })
     );
   }, [seriesId, dispatch]);
@@ -230,7 +230,7 @@ function SeriesIndexOverview(props: SeriesIndexOverviewProps) {
 
               {overviewOptions.showTags ? (
                 <div className={styles.tags}>
-                  <TagListConnector tags={tags} />
+                  <SeriesTagList tags={tags} />
                 </div>
               ) : null}
             </div>

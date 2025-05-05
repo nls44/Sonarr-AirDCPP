@@ -16,7 +16,7 @@ namespace NzbDrone.Core.ImportLists.Trakt.User
 
     public class TraktUserSettings : TraktSettingsBase<TraktUserSettings>
     {
-        private static readonly TraktUserSettingsValidator Validator = new ();
+        private static readonly TraktUserSettingsValidator Validator = new();
 
         public TraktUserSettings()
         {
@@ -28,10 +28,10 @@ namespace NzbDrone.Core.ImportLists.Trakt.User
         [FieldDefinition(1, Label = "ImportListsTraktSettingsListType", Type = FieldType.Select, SelectOptions = typeof(TraktUserListType), HelpText = "ImportListsTraktSettingsListTypeHelpText")]
         public int TraktListType { get; set; }
 
-        [FieldDefinition(2, Label = "ImportListsTraktSettingsWatchedListFilter", Type = FieldType.Select, SelectOptions = typeof(TraktUserWatchedListType), HelpText = "ImportListsTraktSettingsWatchedListFilterHelpText")]
+        [FieldDefinition(2, Label = "ImportListsTraktSettingsWatchedListFilter", Type = FieldType.Select, SelectOptions = typeof(TraktUserWatchedListType), HelpText = "ImportListsTraktSettingsWatchedListFilterSeriesHelpText")]
         public int TraktWatchedListType { get; set; }
 
-        [FieldDefinition(3, Label = "ImportListsTraktSettingsWatchedListSorting", Type = FieldType.Select, SelectOptions = typeof(TraktUserWatchSorting), HelpText = "ImportListsTraktSettingsWatchedListSortingHelpText")]
+        [FieldDefinition(3, Label = "ImportListsTraktSettingsWatchListSorting", Type = FieldType.Select, SelectOptions = typeof(TraktUserWatchSorting), HelpText = "ImportListsTraktSettingsWatchListSortingHelpText")]
         public int TraktWatchSorting { get; set; }
 
         [FieldDefinition(4, Label = "Username", HelpText = "ImportListsTraktSettingsUserListUsernameHelpText")]

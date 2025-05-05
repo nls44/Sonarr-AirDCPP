@@ -5,9 +5,11 @@ import EnhancedSelectInputOption, {
 } from './EnhancedSelectInputOption';
 import styles from './HintedSelectInputOption.css';
 
-interface HintedSelectInputOptionProps extends EnhancedSelectInputOptionProps {
+interface HintedSelectInputOptionProps
+  extends Omit<EnhancedSelectInputOptionProps, 'isSelected'> {
   value: string;
   hint?: React.ReactNode;
+  isSelected?: boolean;
 }
 
 function HintedSelectInputOption(props: HintedSelectInputOptionProps) {
@@ -17,7 +19,6 @@ function HintedSelectInputOption(props: HintedSelectInputOptionProps) {
     hint,
     depth,
     isSelected = false,
-    isDisabled,
     isMobile,
     ...otherProps
   } = props;
@@ -27,8 +28,6 @@ function HintedSelectInputOption(props: HintedSelectInputOptionProps) {
       id={id}
       depth={depth}
       isSelected={isSelected}
-      isDisabled={isDisabled}
-      isHidden={isDisabled}
       isMobile={isMobile}
       {...otherProps}
     >
@@ -42,11 +41,5 @@ function HintedSelectInputOption(props: HintedSelectInputOptionProps) {
     </EnhancedSelectInputOption>
   );
 }
-
-HintedSelectInputOption.defaultProps = {
-  isDisabled: false,
-  isHidden: false,
-  isMultiSelect: false,
-};
 
 export default HintedSelectInputOption;

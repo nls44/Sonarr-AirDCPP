@@ -19,6 +19,7 @@ import {
   setReleaseProfileValue,
 } from 'Store/Actions/Settings/releaseProfiles';
 import selectSettings from 'Store/Selectors/selectSettings';
+import { InputChanged } from 'typings/inputs';
 import ReleaseProfile from 'typings/Settings/ReleaseProfile';
 import translate from 'Utilities/String/translate';
 import styles from './EditReleaseProfileModalContent.css';
@@ -50,7 +51,6 @@ function createReleaseProfileSelector(id?: number) {
       );
 
       return {
-        id,
         isFetching,
         error,
         isSaving,
@@ -102,9 +102,9 @@ function EditReleaseProfileModalContent({
   }, [dispatch, id]);
 
   const handleInputChange = useCallback(
-    (payload: { name: string; value: string | number }) => {
+    (change: InputChanged) => {
       // @ts-expect-error 'setReleaseProfileValue' isn't typed yet
-      dispatch(setReleaseProfileValue(payload));
+      dispatch(setReleaseProfileValue(change));
     },
     [dispatch]
   );
@@ -125,7 +125,6 @@ function EditReleaseProfileModalContent({
               name="name"
               {...name}
               placeholder={translate('OptionalName')}
-              canEdit={true}
               onChange={handleInputChange}
             />
           </FormGroup>

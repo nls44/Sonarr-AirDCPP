@@ -1,7 +1,6 @@
 using System.Linq;
 using NLog;
 using NzbDrone.Core.Download.Pending;
-using NzbDrone.Core.IndexerSearch.Definitions;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Profiles.Delay;
 using NzbDrone.Core.Qualities;
@@ -26,9 +25,9 @@ namespace NzbDrone.Core.DecisionEngine.Specifications.RssSync
         public SpecificationPriority Priority => SpecificationPriority.Database;
         public RejectionType Type => RejectionType.Temporary;
 
-        public virtual DownloadSpecDecision IsSatisfiedBy(RemoteEpisode subject, SearchCriteriaBase searchCriteria)
+        public virtual DownloadSpecDecision IsSatisfiedBy(RemoteEpisode subject, ReleaseDecisionInformation information)
         {
-            if (searchCriteria != null && searchCriteria.UserInvokedSearch)
+            if (information.SearchCriteria is { UserInvokedSearch: true })
             {
                 _logger.Debug("Ignoring delay for user invoked search");
                 return DownloadSpecDecision.Accept();
@@ -41,9 +40,11 @@ namespace NzbDrone.Core.DecisionEngine.Specifications.RssSync
 
             if (delay == 0)
             {
-                _logger.Debug("QualityProfile does not require a waiting period before download for {0}.", subject.Release.DownloadProtocol);
+                _logger.Debug("Delay Profile does not require a waiting period before download for {0}.", subject.Release.DownloadProtocol);
                 return DownloadSpecDecision.Accept();
             }
+
+            _logger.Debug("Delay Profile requires a waiting period of {0} minutes for {1}", delay, subject.Release.DownloadProtocol);
 
             var qualityComparer = new QualityModelComparer(qualityProfile);
 
@@ -95,6 +96,7 @@ namespace NzbDrone.Core.DecisionEngine.Specifications.RssSync
 
             if (oldest != null && oldest.Release.AgeMinutes > delay)
             {
+                _logger.Debug("Oldest pending release {0} has been delayed for {1}, longer than the set delay of {2}. Release will be accepted", oldest.Release.Title, oldest.Release.AgeMinutes, delay);
                 return DownloadSpecDecision.Accept();
             }
 

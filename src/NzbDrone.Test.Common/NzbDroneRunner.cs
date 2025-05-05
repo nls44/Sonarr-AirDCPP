@@ -55,7 +55,7 @@ namespace NzbDrone.Test.Common
 
             if (BuildInfo.IsDebug)
             {
-                Start(Path.Combine(TestContext.CurrentContext.TestDirectory, "..", "..", "_output", "net6.0", consoleExe));
+                Start(Path.Combine(TestContext.CurrentContext.TestDirectory, "..", "..", "_output", "net8.0", consoleExe));
             }
             else
             {
@@ -136,7 +136,7 @@ namespace NzbDrone.Test.Common
 
         private void Start(string outputSonarrConsoleExe)
         {
-            StringDictionary envVars = new ();
+            StringDictionary envVars = new();
             if (PostgresOptions?.Host != null)
             {
                 envVars.Add("Sonarr__Postgres__Host", PostgresOptions.Host);

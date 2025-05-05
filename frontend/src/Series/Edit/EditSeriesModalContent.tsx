@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import SeriesMonitorNewItemsOptionsPopoverContent from 'AddSeries/SeriesMonitorNewItemsOptionsPopoverContent';
 import AppState from 'App/State/AppState';
@@ -15,7 +15,14 @@ import ModalContent from 'Components/Modal/ModalContent';
 import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import Popover from 'Components/Tooltip/Popover';
-import { icons, inputTypes, kinds, tooltipPositions } from 'Helpers/Props';
+import usePrevious from 'Helpers/Hooks/usePrevious';
+import {
+  icons,
+  inputTypes,
+  kinds,
+  sizes,
+  tooltipPositions,
+} from 'Helpers/Props';
 import MoveSeriesModal from 'Series/MoveSeries/MoveSeriesModal';
 import useSeries from 'Series/useSeries';
 import { saveSeries, setSeriesValue } from 'Store/Actions/seriesActions';
@@ -52,6 +59,8 @@ function EditSeriesModalContent({
   const { isSaving, saveError, pendingChanges } = useSelector(
     (state: AppState) => state.series
   );
+
+  const wasSaving = usePrevious(isSaving);
 
   const [isRootFolderModalOpen, setIsRootFolderModalOpen] = useState(false);
 
@@ -145,13 +154,19 @@ function EditSeriesModalContent({
     );
   }, [seriesId, dispatch]);
 
+  useEffect(() => {
+    if (!isSaving && wasSaving && !saveError) {
+      onModalClose();
+    }
+  }, [isSaving, wasSaving, saveError, onModalClose]);
+
   return (
     <ModalContent onModalClose={onModalClose}>
       <ModalHeader>{translate('EditSeriesModalHeader', { title })}</ModalHeader>
 
       <ModalBody>
         <Form {...otherSettings}>
-          <FormGroup>
+          <FormGroup size={sizes.MEDIUM}>
             <FormLabel>{translate('Monitored')}</FormLabel>
 
             <FormInputGroup
@@ -163,7 +178,7 @@ function EditSeriesModalContent({
             />
           </FormGroup>
 
-          <FormGroup>
+          <FormGroup size={sizes.MEDIUM}>
             <FormLabel>
               {translate('MonitorNewSeasons')}
               <Popover
@@ -183,7 +198,7 @@ function EditSeriesModalContent({
             />
           </FormGroup>
 
-          <FormGroup>
+          <FormGroup size={sizes.MEDIUM}>
             <FormLabel>{translate('UseSeasonFolder')}</FormLabel>
 
             <FormInputGroup
@@ -195,7 +210,7 @@ function EditSeriesModalContent({
             />
           </FormGroup>
 
-          <FormGroup>
+          <FormGroup size={sizes.MEDIUM}>
             <FormLabel>{translate('QualityProfile')}</FormLabel>
 
             <FormInputGroup
@@ -206,7 +221,7 @@ function EditSeriesModalContent({
             />
           </FormGroup>
 
-          <FormGroup>
+          <FormGroup size={sizes.MEDIUM}>
             <FormLabel>{translate('SeriesType')}</FormLabel>
 
             <FormInputGroup
@@ -218,7 +233,7 @@ function EditSeriesModalContent({
             />
           </FormGroup>
 
-          <FormGroup>
+          <FormGroup size={sizes.MEDIUM}>
             <FormLabel>{translate('Path')}</FormLabel>
 
             <FormInputGroup
@@ -229,17 +244,18 @@ function EditSeriesModalContent({
                 <FormInputButton
                   key="fileBrowser"
                   kind={kinds.DEFAULT}
-                  title="Root Folder"
+                  title={translate('RootFolder')}
                   onPress={handleRootFolderPress}
                 >
                   <Icon name={icons.ROOT_FOLDER} />
                 </FormInputButton>,
               ]}
+              includeFiles={false}
               onChange={handleInputChange}
             />
           </FormGroup>
 
-          <FormGroup>
+          <FormGroup size={sizes.MEDIUM}>
             <FormLabel>{translate('Tags')}</FormLabel>
 
             <FormInputGroup

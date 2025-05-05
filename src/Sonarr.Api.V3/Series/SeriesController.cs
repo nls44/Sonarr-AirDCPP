@@ -34,6 +34,7 @@ namespace Sonarr.Api.V3.Series
                                 IHandle<SeriesEditedEvent>,
                                 IHandle<SeriesDeletedEvent>,
                                 IHandle<SeriesRenamedEvent>,
+                                IHandle<SeriesBulkEditedEvent>,
                                 IHandle<MediaCoversUpdatedEvent>
     {
         private readonly ISeriesService _seriesService;
@@ -191,7 +192,8 @@ namespace Sonarr.Api.V3.Series
                     SeriesId = series.Id,
                     SourcePath = sourcePath,
                     DestinationPath = destinationPath
-                }, trigger: CommandTrigger.Manual);
+                },
+                    trigger: CommandTrigger.Manual);
             }
 
             var model = seriesResource.ToModel(series);
@@ -328,7 +330,7 @@ namespace Sonarr.Api.V3.Series
         {
             foreach (var series in message.Series)
             {
-                BroadcastResourceChange(ModelAction.Deleted, series.ToResource());
+                BroadcastResourceChange(ModelAction.Deleted, GetSeriesResource(series, false));
             }
         }
 
@@ -336,6 +338,15 @@ namespace Sonarr.Api.V3.Series
         public void Handle(SeriesRenamedEvent message)
         {
             BroadcastResourceChange(ModelAction.Updated, message.Series.Id);
+        }
+
+        [NonAction]
+        public void Handle(SeriesBulkEditedEvent message)
+        {
+            foreach (var series in message.Series)
+            {
+                BroadcastResourceChange(ModelAction.Updated, GetSeriesResource(series, false));
+            }
         }
 
         [NonAction]

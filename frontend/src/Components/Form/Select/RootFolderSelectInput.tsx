@@ -21,19 +21,20 @@ const ADD_NEW_KEY = 'addNew';
 
 export interface RootFolderSelectInputValue
   extends EnhancedSelectInputValue<string> {
+  freeSpace?: number;
   isMissing?: boolean;
 }
 
-interface RootFolderSelectInputProps
+export interface RootFolderSelectInputProps
   extends Omit<
     EnhancedSelectInputProps<EnhancedSelectInputValue<string>, string>,
     'value' | 'values'
   > {
   name: string;
   value?: string;
-  isSaving: boolean;
-  saveError?: object;
-  includeNoChange: boolean;
+  includeMissingValue?: boolean;
+  includeNoChange?: boolean;
+  includeNoChangeDisabled?: boolean;
 }
 
 function createRootFolderOptionsSelector(
@@ -42,78 +43,77 @@ function createRootFolderOptionsSelector(
   includeNoChange: boolean,
   includeNoChangeDisabled: boolean
 ) {
-  return createSelector(
-    createRootFoldersSelector(),
-
-    (rootFolders) => {
-      const values: RootFolderSelectInputValue[] = rootFolders.items.map(
-        (rootFolder) => {
-          return {
-            key: rootFolder.path,
-            value: rootFolder.path,
-            freeSpace: rootFolder.freeSpace,
-            isMissing: false,
-          };
-        }
-      );
-
-      if (includeNoChange) {
-        values.unshift({
-          key: 'noChange',
-          get value() {
-            return translate('NoChange');
-          },
-          isDisabled: includeNoChangeDisabled,
+  return createSelector(createRootFoldersSelector(), (rootFolders) => {
+    const values: RootFolderSelectInputValue[] = rootFolders.items.map(
+      (rootFolder) => {
+        return {
+          key: rootFolder.path,
+          value: rootFolder.path,
+          freeSpace: rootFolder.freeSpace,
           isMissing: false,
-        });
+        };
       }
+    );
 
-      if (!values.length) {
-        values.push({
-          key: '',
-          value: '',
-          isDisabled: true,
-          isHidden: true,
-        });
-      }
-
-      if (
-        includeMissingValue &&
-        value &&
-        !values.find((v) => v.key === value)
-      ) {
-        values.push({
-          key: value,
-          value,
-          isMissing: true,
-          isDisabled: true,
-        });
-      }
-
-      values.push({
-        key: ADD_NEW_KEY,
-        value: translate('AddANewPath'),
+    if (includeNoChange) {
+      values.unshift({
+        key: 'noChange',
+        get value() {
+          return translate('NoChange');
+        },
+        isDisabled: includeNoChangeDisabled,
+        isMissing: false,
       });
-
-      return {
-        values,
-        isSaving: rootFolders.isSaving,
-        saveError: rootFolders.saveError,
-      };
     }
-  );
+
+    if (!values.length) {
+      values.push({
+        key: '',
+        value: '',
+        isDisabled: true,
+        isHidden: true,
+      });
+    }
+
+    if (includeMissingValue && value && !values.find((v) => v.key === value)) {
+      values.push({
+        key: value,
+        value,
+        isMissing: true,
+        isDisabled: true,
+      });
+    }
+
+    values.push({
+      key: ADD_NEW_KEY,
+      value: translate('AddANewPath'),
+    });
+
+    return {
+      values,
+      isSaving: rootFolders.isSaving,
+      saveError: rootFolders.saveError,
+    };
+  });
 }
 
 function RootFolderSelectInput({
   name,
   value,
+  includeMissingValue = true,
   includeNoChange = false,
+  includeNoChangeDisabled = true,
   onChange,
   ...otherProps
 }: RootFolderSelectInputProps) {
   const dispatch = useDispatch();
   const { values, isSaving, saveError } = useSelector(
-    createRootFolderOptionsSelector(value, true, includeNoChange, false)
+    createRootFolderOptionsSelector(
+      value,
+      includeMissingValue,
+      includeNoChange,
+      includeNoChangeDisabled
+    )
   );
   const [isAddNewRootFolderModalOpen, setIsAddNewRootFolderModalOpen] =
     useState(false);
@@ -134,7 +134,7 @@ function RootFolderSelectInput({
   const handleNewRootFolderSelect = useCallback(
     ({ value: newValue }: InputChanged<string>) => {
       setNewRootFolderPath(newValue);
-      dispatch(addRootFolder(newValue));
+      dispatch(addRootFolder({ path: newValue }));
     },
     [setNewRootFolderPath, dispatch]
   );

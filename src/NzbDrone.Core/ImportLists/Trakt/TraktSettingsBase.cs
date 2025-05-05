@@ -37,7 +37,7 @@ namespace NzbDrone.Core.ImportLists.Trakt
     public class TraktSettingsBase<TSettings> : ImportListSettingsBase<TSettings>
         where TSettings : TraktSettingsBase<TSettings>
     {
-        private static readonly TraktSettingsBaseValidator<TSettings> Validator = new ();
+        private static readonly TraktSettingsBaseValidator<TSettings> Validator = new();
 
         public TraktSettingsBase()
         {
@@ -59,11 +59,8 @@ namespace NzbDrone.Core.ImportLists.Trakt
         [FieldDefinition(0, Label = "ImportListsSettingsAuthUser", Type = FieldType.Textbox, Hidden = HiddenType.Hidden)]
         public string AuthUser { get; set; }
 
-        [FieldDefinition(5, Label = "ImportListsTraktSettingsLimit", HelpText = "ImportListsTraktSettingsLimitHelpText")]
+        [FieldDefinition(98, Label = "ImportListsTraktSettingsLimit", HelpText = "ImportListsTraktSettingsLimitSeriesHelpText")]
         public int Limit { get; set; }
-
-        [FieldDefinition(6, Label = "ImportListsTraktSettingsAdditionalParameters", HelpText = "ImportListsTraktSettingsAdditionalParametersHelpText", Advanced = true)]
-        public string TraktAdditionalParameters { get; set; }
 
         [FieldDefinition(99, Label = "ImportListsTraktSettingsAuthenticateWithTrakt", Type = FieldType.OAuth)]
         public string SignIn { get; set; }

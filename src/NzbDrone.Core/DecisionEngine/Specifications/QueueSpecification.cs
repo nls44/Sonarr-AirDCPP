@@ -3,7 +3,6 @@ using NLog;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.Download.TrackedDownloads;
-using NzbDrone.Core.IndexerSearch.Definitions;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Queue;
@@ -34,7 +33,7 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
         public SpecificationPriority Priority => SpecificationPriority.Default;
         public RejectionType Type => RejectionType.Permanent;
 
-        public DownloadSpecDecision IsSatisfiedBy(RemoteEpisode subject, SearchCriteriaBase searchCriteria)
+        public DownloadSpecDecision IsSatisfiedBy(RemoteEpisode subject, ReleaseDecisionInformation information)
         {
             var queue = _queueService.GetQueue();
             var matchingEpisode = queue.Where(q => q.RemoteEpisode?.Series != null &&
@@ -95,17 +94,9 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
 
                     case UpgradeableRejectReason.MinCustomFormatScore:
                         return DownloadSpecDecision.Reject(DownloadRejectionReason.QueueCustomFormatScoreIncrement, "Release in queue has Custom Format score within Custom Format score increment: {0}", qualityProfile.MinUpgradeFormatScore);
-                }
 
-                _logger.Debug("Checking if profiles allow upgrading. Queued: {0}", remoteEpisode.ParsedEpisodeInfo.Quality);
-
-                if (!_upgradableSpecification.IsUpgradeAllowed(subject.Series.QualityProfile,
-                                                               remoteEpisode.ParsedEpisodeInfo.Quality,
-                                                               queuedItemCustomFormats,
-                                                               subject.ParsedEpisodeInfo.Quality,
-                                                               subject.CustomFormats))
-                {
-                    return DownloadSpecDecision.Reject(DownloadRejectionReason.QueueNoUpgrades, "Another release is queued and the Quality profile does not allow upgrades");
+                    case UpgradeableRejectReason.UpgradesNotAllowed:
+                        return DownloadSpecDecision.Reject(DownloadRejectionReason.QueueUpgradesNotAllowed, "Release in queue and Quality Profile '{0}' does not allow upgrades", qualityProfile.Name);
                 }
 
                 if (_upgradableSpecification.IsRevisionUpgrade(remoteEpisode.ParsedEpisodeInfo.Quality, subject.ParsedEpisodeInfo.Quality))

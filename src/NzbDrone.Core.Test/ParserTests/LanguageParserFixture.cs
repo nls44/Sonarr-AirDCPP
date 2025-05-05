@@ -67,10 +67,31 @@ namespace NzbDrone.Core.Test.ParserTests
         [TestCase("Title.S01.720p.VFQ.WEB-DL.AAC2.0.H.264-BTN")]
         [TestCase("Title.S01.720p.TRUEFRENCH.WEB-DL.AAC2.0.H.264-BTN")]
         [TestCase("Series In The Middle S01 Multi VFI VO 1080p WEB x265 HEVC AAC 5.1-Papaya")]
+        [TestCase("Series Title S01 AVC.1080p.Blu-ray HD.VOSTFR.VFF")]
+        [TestCase("Series Title S01 Bluray 4k HDR HEVC AC3 VFF")]
+        [TestCase("Series Title S01 AVC.1080p.Blu-ray Remux HD.VOSTFR.VFF")]
+        [TestCase("Series Title S01 x264.720p.Blu-ray Rip HD.VOSTFR.VFF. ONLY")]
+        [TestCase("Series Title S01 HEVC.2160p.Blu-ray 4K.VOSTFR.VFF. JATO")]
+        [TestCase("Series_Title_S01_ENG_ITA_FRA_AAC_1080p_WebDL_x264")]
+        [TestCase("Series.Title.S01.ENG-ITA-FRA.AAC.1080p.WebDL.x264")]
+        [TestCase("Series Title S01 (BDrip 1080p ENG-ITA-FRA) Multisub x264")]
+        [TestCase("Series.Title.S01.ENG-ITA-FRE.AAC.1080p.WebDL.x264")]
+        [TestCase("Series Title S01 (BDrip 1080p ENG-ITA-FRE) Multisub x264")]
         public void should_parse_language_french(string postTitle)
         {
             var result = LanguageParser.ParseLanguages(postTitle);
             result.Should().Contain(Language.French);
+        }
+
+        [TestCase("Series Title S01 1080p Eng Fra [mkvonly]")]
+        [TestCase("Series Title S01 Eng Fre Multi Subs 720p [H264 mp4]")]
+        [TestCase("Series-Title-S01-[DVDRip]-H264-Fra-Ac3-2-0-Eng-5-1")]
+        public void should_parse_language_french_english(string postTitle)
+        {
+            var result = LanguageParser.ParseLanguages(postTitle);
+
+            result.Should().Contain(Language.French);
+            result.Should().Contain(Language.English);
         }
 
         [TestCase("Title.the.Series.2009.S01E14.Spanish.HDTV.XviD-LOL")]
@@ -86,6 +107,12 @@ namespace NzbDrone.Core.Test.ParserTests
         [TestCase("Title.the.Series.S04E15.Brotherly.Love.GERMAN.DUBBED.WS.WEBRiP.XviD.REPACK-TVP")]
         [TestCase("The Series Title - S02E16 - Kampfhaehne - mkv - by Videomann")]
         [TestCase("Series.Title.S01E03.Ger.Dub.AAC.1080p.WebDL.x264-TKP21")]
+        [TestCase("Series Title S01 Eng Fre Ger Ita Spa Cze Jpn 2160p BluRay Remux DV HDR HEVC Atmos SGF")]
+        [TestCase("Series Title.S01.Eng.Fre.Ger.Ita.Por.Spa.2160p.WEBMux.DV.HDR.HEVC.Atmos-SGF")]
+        [TestCase("Series.Title.S02E10.Episode.Title.German.DL.BD.x264-TVS")]
+        [TestCase("Series Title S01 Eng Fre Ger Ita Por Spa 2160p WEBMux HDR HEVC DDP SGF")]
+        [TestCase("Series Title S01 KOREAN ENG FRA GER ITA SPA MULTI 2160p NF WEB DL DDP5 1 DV HDR x265 Atmos MassModz")]
+        [TestCase("Series.Title.S02E09.EpisodeName.German.DL.BD.x264-TVS")]
         public void should_parse_language_german(string postTitle)
         {
             var result = LanguageParser.ParseLanguages(postTitle);
@@ -94,6 +121,8 @@ namespace NzbDrone.Core.Test.ParserTests
 
         [TestCase("Title.the.Series.2009.S01E14.Italian.HDTV.XviD-LOL")]
         [TestCase("Title.the.Series.1x19.ita.720p.bdmux.x264-novarip")]
+        [TestCase("Title.the.Series.ENG-FRE-ITA.AAC.1080p.WebDL.x264")]
+        [TestCase("Title the Series (BDrip 1080p ENG-FRE-ITA) Multisub x264")]
         public void should_parse_language_italian(string postTitle)
         {
             var result = LanguageParser.ParseLanguages(postTitle);
@@ -460,6 +489,31 @@ namespace NzbDrone.Core.Test.ParserTests
             result.Languages.Count.Should().Be(2);
             result.Languages.Should().Contain(Language.Ukrainian);
             result.Languages.Should().Contain(Language.Turkish);
+        }
+
+        [TestCase("series.title.s01e01.2023.[Azerbaijan.Dubbed].1080p.WEB-DLRip.TeeWee")]
+        [TestCase("Series s02e04 (2023) [Azerbaijani Dubbed] 1080p WEB-DLRip TeeWee")]
+        public void should_parse_azerbaijani(string postTitle)
+        {
+            var result = Parser.Parser.ParseTitle(postTitle);
+            result.Languages.Count.Should().Be(1);
+            result.Languages.Should().Contain(Language.Azerbaijani);
+        }
+
+        [TestCase("series.title.s01e01.2023.[Uzbekistan.Dubbed].1080p.WEB-DLRip.TeeWee")]
+        [TestCase("Sweet.Series.S02E08.2023.[Uzbek.Dubbed].1080p.WEB-DLRip.TeeWee")]
+        public void should_parse_uzbek(string postTitle)
+        {
+            var result = Parser.Parser.ParseTitle(postTitle);
+            result.Languages.Count.Should().Be(1);
+            result.Languages.Should().Contain(Language.Uzbek);
+        }
+
+        [TestCase("Title.the.Series.2009.S01E14.Urdu.HDTV.XviD-LOL")]
+        public void should_parse_language_urdu(string postTitle)
+        {
+            var result = LanguageParser.ParseLanguages(postTitle);
+            result.Should().Contain(Language.Urdu);
         }
 
         [TestCase("Name (2020) - S01E20 - [AAC 2.0].testtitle.default.eng.forced.ass", new[] { "default", "forced" }, "testtitle", "English")]
