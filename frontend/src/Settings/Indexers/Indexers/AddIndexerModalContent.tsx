@@ -30,16 +30,19 @@ function AddIndexerModalContent({
   const { isSchemaFetching, isSchemaPopulated, schemaError, schema } =
     useSelector((state: AppState) => state.settings.indexers);
 
-  const { usenetIndexers, torrentIndexers } = useMemo(() => {
+  const { usenetIndexers, torrentIndexers, directConnectIndexers } = useMemo(() => {
     return schema.reduce<{
       usenetIndexers: Indexer[];
       torrentIndexers: Indexer[];
+      directConnectIndexers: Indexer[];
     }>(
       (acc, item) => {
         if (item.protocol === 'usenet') {
           acc.usenetIndexers.push(item);
         } else if (item.protocol === 'torrent') {
           acc.torrentIndexers.push(item);
+        } else {
+          acc.directConnectIndexers.push(item);
         }
 
         return acc;
@@ -47,6 +50,7 @@ function AddIndexerModalContent({
       {
         usenetIndexers: [],
         torrentIndexers: [],
+        directConnectIndexers: []
       }
     );
   }, [schema]);
@@ -102,6 +106,22 @@ function AddIndexerModalContent({
                 })}
               </div>
             </FieldSet>
+
+            <FieldSet legend={translate('DirectConnect')}>
+              <div className={styles.indexers}>
+                {directConnectIndexers.map((indexer) => {
+                  return (
+                    <AddIndexerItem
+                      key={indexer.implementation}
+                      {...indexer}
+                      implementation={indexer.implementation}
+                      onIndexerSelect={onIndexerSelect}
+                    />
+                  );
+                })}
+              </div>
+            </FieldSet>
+
           </div>
         ) : null}
       </ModalBody>

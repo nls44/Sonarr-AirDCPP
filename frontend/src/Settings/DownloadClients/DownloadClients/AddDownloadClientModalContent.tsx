@@ -30,16 +30,19 @@ function AddDownloadClientModalContent({
   const { isSchemaFetching, isSchemaPopulated, schemaError, schema } =
     useSelector((state: AppState) => state.settings.downloadClients);
 
-  const { usenetDownloadClients, torrentDownloadClients } = useMemo(() => {
+  const { usenetDownloadClients, torrentDownloadClients, directConnectDownloadClients } = useMemo(() => {
     return schema.reduce<{
       usenetDownloadClients: DownloadClient[];
       torrentDownloadClients: DownloadClient[];
+      directConnectDownloadClients: DownloadClient[];
     }>(
       (acc, item) => {
         if (item.protocol === 'usenet') {
           acc.usenetDownloadClients.push(item);
         } else if (item.protocol === 'torrent') {
           acc.torrentDownloadClients.push(item);
+        } else {
+          acc.directConnectDownloadClients.push(item);
         }
 
         return acc;
@@ -47,6 +50,7 @@ function AddDownloadClientModalContent({
       {
         usenetDownloadClients: [],
         torrentDownloadClients: [],
+        directConnectDownloadClients: []
       }
     );
   }, [schema]);
@@ -104,6 +108,22 @@ function AddDownloadClientModalContent({
                 })}
               </div>
             </FieldSet>
+
+            <FieldSet legend={translate('DirectConnect')}>
+              <div className={styles.downloadClients}>
+                {directConnectDownloadClients.map((downloadClient) => {
+                  return (
+                    <AddDownloadClientItem
+                      key={downloadClient.implementation}
+                      {...downloadClient}
+                      implementation={downloadClient.implementation}
+                      onDownloadClientSelect={onDownloadClientSelect}
+                    />
+                  );
+                })}
+              </div>
+            </FieldSet>
+
           </div>
         ) : null}
       </ModalBody>

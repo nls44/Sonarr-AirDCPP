@@ -14,6 +14,7 @@ export default interface MediaManagement {
   skipFreeSpaceCheckWhenImporting: boolean;
   minimumFreeSpaceWhenImporting: number;
   copyUsingHardlinks: boolean;
+  copyUsingSymlinks: boolean;
   useScriptImport: boolean;
   scriptImportPath: string;
   importExtraFiles: boolean;

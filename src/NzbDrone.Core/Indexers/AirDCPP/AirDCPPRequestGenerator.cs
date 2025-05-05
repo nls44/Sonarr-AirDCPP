@@ -37,13 +37,13 @@ namespace NzbDrone.Core.Indexers.AirDCPP
             return GetDefaultSearchRequest(searchCriteria.Series.Title, searchCriteria.Episodes.Select(e => (e.SeasonNumber, e.EpisodeNumber)).ToList());
         }
 
-        private IndexerPageableRequestChain GetDefaultSearchRequest(string series, List<(int season, int episode)> episodes)
+        private IndexerPageableRequestChain GetDefaultSearchRequest(string series, List<(int Season, int Episode)> episodes)
         {
             var pageableRequests = new IndexerPageableRequestChain();
 
             foreach (var episode in episodes)
             {
-                var searchString = string.Format("{0} S{1:00}E{2:00}", series, episode.season, episode.episode);
+                var searchString = string.Format("{0} S{1:00}E{2:00}", series, episode.Season, episode.Episode);
                 pageableRequests.Add(GetRequest(searchString));
             }
 

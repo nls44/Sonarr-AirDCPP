@@ -52,6 +52,7 @@ function EditSeriesModalContent({
     qualityProfileId,
     seriesType,
     path,
+    customTitle,
     tags,
     rootFolderPath: initialRootFolderPath,
   } = useSeries(seriesId)!;
@@ -79,6 +80,7 @@ function EditSeriesModalContent({
         qualityProfileId,
         seriesType,
         path,
+        customTitle,
         tags,
       },
       pendingChanges,
@@ -91,6 +93,7 @@ function EditSeriesModalContent({
     qualityProfileId,
     seriesType,
     path,
+    customTitle,
     tags,
     pendingChanges,
     saveError,
@@ -251,6 +254,17 @@ function EditSeriesModalContent({
                 </FormInputButton>,
               ]}
               includeFiles={false}
+              onChange={handleInputChange}
+            />
+          </FormGroup>
+
+          <FormGroup size={sizes.MEDIUM}>
+            <FormLabel>Custom Title</FormLabel>
+
+            <FormInputGroup
+              type={inputTypes.TEXT}
+              name="customTitle"
+              {...settings.customTitle}
               onChange={handleInputChange}
             />
           </FormGroup>

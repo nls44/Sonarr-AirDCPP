@@ -35,7 +35,7 @@ namespace NzbDrone.Core.Download.Clients.AirDCPP
             var results = _airDCPPProxy.GetQueueHistory(Settings);
             return results.Select(r => new DownloadClientItem
             {
-                DownloadClientInfo = DownloadClientItemClientInfo.FromDownloadClient(this),
+                DownloadClientInfo = DownloadClientItemClientInfo.FromDownloadClient(this, false),
                 DownloadId = r.id.ToString(),
                 RemainingTime = TimeSpan.FromSeconds((long)r.seconds_left),
                 RemainingSize = (long)(r.size - r.downloaded_bytes),
