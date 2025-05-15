@@ -120,6 +120,6 @@ jobs:
     uses: ./.github/workflows/deploy_no_notification.yml
     with:
       framework: ${{ needs.prepare.outputs.framework }}
-      branch: ${{ github.ref_name }}
+      branch: AirDCPP
       major_version: ${{ needs.prepare.outputs.major_version }}
       version: ${{ needs.prepare.outputs.version }}
