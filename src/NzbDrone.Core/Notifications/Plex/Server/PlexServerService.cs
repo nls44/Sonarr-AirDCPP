@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using FluentValidation.Results;
@@ -8,7 +9,9 @@ using NLog;
 using NzbDrone.Common.Cache;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Localization;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.RootFolders;
 using NzbDrone.Core.Tv;
 using NzbDrone.Core.Validation;
@@ -19,6 +22,7 @@ namespace NzbDrone.Core.Notifications.Plex.Server
     {
         void UpdateLibrary(Series series, PlexServerSettings settings);
         void UpdateLibrary(IEnumerable<Series> series, PlexServerSettings settings);
+        void UpdateLibrary(IEnumerable<EpisodeFile> episodes, Series series, PlexServerSettings settings);
         ValidationFailure Test(PlexServerSettings settings);
     }
 
@@ -28,20 +32,31 @@ namespace NzbDrone.Core.Notifications.Plex.Server
         private readonly IPlexServerProxy _plexServerProxy;
         private readonly IRootFolderService _rootFolderService;
         private readonly ILocalizationService _localizationService;
+        private readonly IConfigService _configService;
+        private readonly IDiskProvider _diskProvider;
         private readonly Logger _logger;
 
-        public PlexServerService(ICacheManager cacheManager, IPlexServerProxy plexServerProxy, IRootFolderService rootFolderService, ILocalizationService localizationService, Logger logger)
+        public PlexServerService(
+            ICacheManager cacheManager,
+            IPlexServerProxy plexServerProxy,
+            IRootFolderService rootFolderService,
+            ILocalizationService localizationService,
+            IConfigService configService,
+            IDiskProvider diskProvider,
+            Logger logger)
         {
             _versionCache = cacheManager.GetCache<Version>(GetType(), "versionCache");
             _plexServerProxy = plexServerProxy;
             _rootFolderService = rootFolderService;
             _localizationService = localizationService;
+            _configService = configService;
+            _diskProvider = diskProvider;
             _logger = logger;
         }
 
         public void UpdateLibrary(Series series, PlexServerSettings settings)
         {
-            UpdateLibrary(new[] { series }, settings);
+            UpdateLibrary([series], settings);
         }
 
         public void UpdateLibrary(IEnumerable<Series> multipleSeries, PlexServerSettings settings)
@@ -67,6 +82,41 @@ namespace NzbDrone.Core.Notifications.Plex.Server
             {
                 _logger.Warn(ex, "Failed to Update Plex host: " + settings.Host);
                 throw;
+            }
+        }
+
+        public void UpdateLibrary(IEnumerable<EpisodeFile> episodes, Series series, PlexServerSettings settings)
+        {
+            var sections = GetSections(settings);
+
+            if (_configService.CopyUsingSymlinks)
+            {
+                foreach (var episode in episodes)
+                {
+                    var episodeLocation = _diskProvider.GetParentFolder(episode.Path).TrimEnd(Path.DirectorySeparatorChar);
+                    var sectionLocation = _diskProvider.GetParentFolder(episodeLocation).TrimEnd(Path.DirectorySeparatorChar);
+
+                    _logger.Debug("Searching matching section for {0}", sectionLocation);
+                    var matchingSections = sections.Where(section => section.Locations.Any(location =>
+                            location.Path.TrimEnd(Path.DirectorySeparatorChar) == sectionLocation))
+                        .ToList();
+
+                    if (matchingSections.Any())
+                    {
+                        foreach (var matchingSection in matchingSections)
+                        {
+                            _plexServerProxy.Update(matchingSection.Id, episodeLocation, settings);
+                        }
+                    }
+                    else
+                    {
+                        _logger.Warn("Failed to find matching section for {0}", sectionLocation);
+                    }
+                }
+            }
+            else
+            {
+                UpdateLibrary([series], settings);
             }
         }
 

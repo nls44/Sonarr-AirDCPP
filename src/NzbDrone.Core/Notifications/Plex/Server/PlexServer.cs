@@ -39,7 +39,7 @@ namespace NzbDrone.Core.Notifications.Plex.Server
 
         public override void OnImportComplete(ImportCompleteMessage message)
         {
-            UpdateIfEnabled(message.Series);
+            UpdateIfEnabled(message.Series, message.EpisodeFiles);
         }
 
         public override void OnRename(Series series, List<RenamedEpisodeFile> renamedFiles)
@@ -65,14 +65,22 @@ namespace NzbDrone.Core.Notifications.Plex.Server
             }
         }
 
-        private void UpdateIfEnabled(Series series)
+        private void UpdateIfEnabled(Series series, List<EpisodeFile> episodes = null)
         {
             _plexTvService.Ping(Settings.AuthToken);
 
             if (Settings.UpdateLibrary)
             {
-                _logger.Debug("Scheduling library update for series {0} {1}", series.Id, series.Title);
-                _updateQueue.Add(Settings.Host, series, false);
+                if (episodes != null)
+                {
+                    _logger.Debug("Starting library update for {0}, episodes: {1}", series.Title, string.Join(',', episodes.Select(ep => ep.Path)));
+                    _plexServerService.UpdateLibrary(episodes, series, Settings);
+                }
+                else
+                {
+                    _logger.Debug("Scheduling library update for series {0} {1}", series.Id, series.Title);
+                    _updateQueue.Add(Settings.Host, series, false);
+                }
             }
         }
 
