@@ -1,0 +1,126 @@
+name: Create new release
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  FRAMEWORK: net8.0
+  RAW_BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+  SONARR_MAJOR_VERSION: 5
+  VERSION: 5.0.0
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      framework: ${{ steps.variables.outputs.framework }}
+      major_version: ${{ steps.variables.outputs.major_version }}
+      version: ${{ steps.variables.outputs.version }}
+      branch: ${{ steps.variables.outputs.branch }}
+    steps:
+      - name: Setup Environment Variables
+        id: variables
+        shell: bash
+        run: |
+          echo "framework=${{ env.FRAMEWORK }}" >> "$GITHUB_OUTPUT"
+          echo "major_version=${{ env.SONARR_MAJOR_VERSION }}" >> "$GITHUB_OUTPUT"
+          echo "version=${{ env.VERSION }}.$((${{ github.run_number }}))" >> "$GITHUB_OUTPUT"
+          echo "branch=${RAW_BRANCH_NAME//\//-}" >> "$GITHUB_OUTPUT"
+
+  backend:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runtime: freebsd-x64
+            package_tests: false
+            os: ubuntu-latest
+          - runtime: linux-arm
+            package_tests: false
+            os: ubuntu-latest
+          - runtime: linux-arm64
+            package_tests: false
+            os: ubuntu-latest
+          - runtime: linux-musl-arm64
+            package_tests: false
+            os: ubuntu-latest
+          - runtime: linux-musl-x64
+            package_tests: false
+            os: ubuntu-latest
+          - runtime: linux-x64
+            package_tests: true
+            os: ubuntu-latest
+          - runtime: osx-arm64
+            package_tests: true
+            os: ubuntu-latest
+          - runtime: osx-x64
+            package_tests: false
+            os: ubuntu-latest
+          - runtime: win-x64
+            package_tests: true
+            os: ubuntu-latest
+          - runtime: win-x86
+            package_tests: false
+            os: ubuntu-latest
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Build
+        uses: ./.github/actions/build
+        with:
+          branch: ${{ needs.prepare.outputs.branch }}
+          version: ${{ needs.prepare.outputs.version }}
+          framework: ${{ needs.prepare.outputs.framework }}
+          runtime: ${{ matrix.runtime }}
+          package_tests: ${{ matrix.package_tests }}
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Volta
+        uses: volta-cli/action@v4
+
+      - name: Yarn Install
+        run: yarn install
+
+      - name: Lint
+        run: yarn lint
+
+      - name: Stylelint
+        run: yarn stylelint -f github
+
+      - name: Build
+        run: yarn build --env production
+
+      - name: Publish UI Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build_ui
+          path: _output/UI/**/*
+
+  deploy:
+    if: ${{ github.ref_name == 'v5-develop' }}
+    needs:
+      [
+        prepare,
+        backend,
+        frontend
+      ]
+    secrets: inherit
+    uses: ./.github/workflows/deploy_no_notification.yml
+    with:
+      framework: ${{ needs.prepare.outputs.framework }}
+      branch: ${{ github.ref_name }}
+      major_version: ${{ needs.prepare.outputs.major_version }}
+      version: ${{ needs.prepare.outputs.version }}
