@@ -110,7 +110,6 @@ jobs:
           path: _output/UI/**/*
 
   deploy:
-    if: ${{ github.ref_name == 'v5-develop' }}
     needs:
       [
         prepare,
