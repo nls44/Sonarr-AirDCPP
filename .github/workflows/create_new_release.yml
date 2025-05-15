@@ -76,7 +76,7 @@ jobs:
       - name: Build
         uses: ./.github/actions/build
         with:
-          branch: ${{ needs.prepare.outputs.branch }}
+          branch: AirDCPP
           version: ${{ needs.prepare.outputs.version }}
           framework: ${{ needs.prepare.outputs.framework }}
           runtime: ${{ matrix.runtime }}
