@@ -30,7 +30,11 @@ function AddDownloadClientModalContent({
   const { isSchemaFetching, isSchemaPopulated, schemaError, schema } =
     useSelector((state: AppState) => state.settings.downloadClients);
 
-  const { usenetDownloadClients, torrentDownloadClients, directConnectDownloadClients } = useMemo(() => {
+  const {
+    usenetDownloadClients,
+    torrentDownloadClients,
+    directConnectDownloadClients,
+  } = useMemo(() => {
     return schema.reduce<{
       usenetDownloadClients: DownloadClient[];
       torrentDownloadClients: DownloadClient[];
@@ -50,7 +54,7 @@ function AddDownloadClientModalContent({
       {
         usenetDownloadClients: [],
         torrentDownloadClients: [],
-        directConnectDownloadClients: []
+        directConnectDownloadClients: [],
       }
     );
   }, [schema]);
@@ -123,7 +127,6 @@ function AddDownloadClientModalContent({
                 })}
               </div>
             </FieldSet>
-
           </div>
         ) : null}
       </ModalBody>

@@ -301,9 +301,7 @@ function MediaManagement() {
                   isAdvanced={true}
                   size={sizes.MEDIUM}
                 >
-                  <FormLabel>
-                    {translate('UseSymlinksInsteadOfCopy')}
-                  </FormLabel>
+                  <FormLabel>{translate('UseSymlinksInsteadOfCopy')}</FormLabel>
 
                   <FormInputGroup
                     type={inputTypes.CHECK}
