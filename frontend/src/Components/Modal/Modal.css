@@ -19,6 +19,7 @@
 .modal {
   position: relative;
   display: flex;
+  max-width: 90%;
   max-height: 90%;
   border-radius: 6px;
   opacity: 1;
@@ -27,12 +28,6 @@
 .modalOpen {
   /* Prevent the body from scrolling when the modal is open */
   overflow: hidden !important;
-}
-
-.modalOpenIOS {
-  position: fixed;
-  right: 0;
-  left: 0;
 }
 
 /*

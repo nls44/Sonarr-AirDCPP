@@ -1,8 +1,8 @@
 import React from 'react';
 import Label from 'Components/Label';
 import { kinds, sizes } from 'Helpers/Props';
-import useSeries from 'Series/useSeries';
-import useTags from 'Tags/useTags';
+import { useSingleSeries } from 'Series/useSeries';
+import { useTagList } from 'Tags/useTags';
 import sortByProp from 'Utilities/Array/sortByProp';
 
 interface SeriesTagsProps {
@@ -10,8 +10,8 @@ interface SeriesTagsProps {
 }
 
 function SeriesTags({ seriesId }: SeriesTagsProps) {
-  const series = useSeries(seriesId)!;
-  const tagList = useTags();
+  const series = useSingleSeries(seriesId)!;
+  const tagList = useTagList();
 
   const tags = series.tags
     .map((tagId) => tagList.find((tag) => tag.id === tagId))

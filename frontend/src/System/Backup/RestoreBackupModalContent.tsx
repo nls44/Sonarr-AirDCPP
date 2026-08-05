@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useAppValue } from 'App/appStore';
 import { Error } from 'App/State/AppSectionState';
-import AppState from 'App/State/AppState';
 import TextInput from 'Components/Form/TextInput';
 import Icon, { IconName, IconProps } from 'Components/Icon';
 import Button from 'Components/Link/Button';
@@ -12,9 +11,10 @@ import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import usePrevious from 'Helpers/Hooks/usePrevious';
 import { icons, kinds } from 'Helpers/Props';
-import { restart, restoreBackup } from 'Store/Actions/systemActions';
+import { useRestart } from 'System/useSystem';
 import { FileInputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
+import { useRestoreBackup, useRestoreBackupUpload } from './useBackups';
 import styles from './RestoreBackupModalContent.css';
 
 function getErrorMessage(error: Error) {
@@ -78,18 +78,22 @@ function RestoreBackupModalContent({
   name,
   onModalClose,
 }: RestoreBackupModalContentProps) {
-  const { isRestoring, restoreError } = useSelector(
-    (state: AppState) => state.system.backups
-  );
+  const isRestarting = useAppValue('isRestarting');
 
-  const { isRestarting } = useSelector((state: AppState) => state.app);
+  const { restoreBackupById, isRestoringBackup, restoreBackupError } =
+    useRestoreBackup(id || 0);
+  const { uploadBackup, isUploadingBackup, uploadBackupError } =
+    useRestoreBackupUpload();
+  const { mutate: restart } = useRestart();
 
-  const dispatch = useDispatch();
   const [path, setPath] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [isRestored, setIsRestored] = useState(false);
   const [isRestarted, setIsRestarted] = useState(false);
   const [isReloading, setIsReloading] = useState(false);
+
+  const isRestoring = isRestoringBackup || isUploadingBackup;
+  const restoreError = restoreBackupError || uploadBackupError;
   const wasRestoring = usePrevious(isRestoring);
   const wasRestarting = usePrevious(isRestarting);
 
@@ -106,15 +110,21 @@ function RestoreBackupModalContent({
   }, []);
 
   const handleRestorePress = useCallback(() => {
-    dispatch(restoreBackup({ id, file }));
-  }, [id, file, dispatch]);
+    if (id) {
+      restoreBackupById();
+    } else if (file) {
+      const formData = new FormData();
+      formData.append('restore', file);
+      uploadBackup(formData);
+    }
+  }, [id, file, restoreBackupById, uploadBackup]);
 
   useEffect(() => {
     if (wasRestoring && !isRestoring && !restoreError) {
       setIsRestored(true);
-      dispatch(restart());
+      restart();
     }
-  }, [isRestoring, wasRestoring, restoreError, dispatch]);
+  }, [isRestoring, wasRestoring, restoreError, restart]);
 
   useEffect(() => {
     if (wasRestarting && !isRestarting) {
@@ -122,7 +132,7 @@ function RestoreBackupModalContent({
       setIsReloading(true);
       window.location.reload();
     }
-  }, [isRestarting, wasRestarting, dispatch]);
+  }, [isRestarting, wasRestarting]);
 
   return (
     <ModalContent onModalClose={onModalClose}>
@@ -147,7 +157,7 @@ function RestoreBackupModalContent({
             <div className={styles.stepState}>
               <Icon
                 size={20}
-                {...getStepIconProps(isRestoring, isRestored, restoreError)}
+                {...getStepIconProps(isRestoring, isRestored, undefined)}
               />
             </div>
 

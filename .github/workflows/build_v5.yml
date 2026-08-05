@@ -10,6 +10,7 @@ on:
   pull_request:
     branches:
       - v5-develop
+      - v5-redesign
     paths-ignore:
       - "src/NzbDrone.Core/Localization/Core/**"
       - "src/Sonarr.Api.*/openapi.json"
@@ -19,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FRAMEWORK: net8.0
+  FRAMEWORK: net10.0
   RAW_BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
   SONARR_MAJOR_VERSION: 5
   VERSION: 5.0.0
@@ -82,7 +83,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Build
         uses: ./.github/actions/build
@@ -97,10 +98,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Volta
-        uses: volta-cli/action@v4
+        uses: volta-cli/action@v5
 
       - name: Yarn Install
         run: yarn install
@@ -115,7 +116,7 @@ jobs:
         run: yarn build --env production
 
       - name: Publish UI Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build_ui
           path: _output/UI/**/*
@@ -139,7 +140,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Test
         uses: ./.github/actions/test
@@ -152,9 +153,13 @@ jobs:
   unit_test_postgres:
     needs: backend
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres-version: [16, 17, 18]
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Test
         uses: ./.github/actions/test
@@ -164,6 +169,7 @@ jobs:
           pattern: Sonarr.*.Test.dll
           filter: TestCategory!=ManualTest&TestCategory!=WINDOWS&TestCategory!=IntegrationTest&TestCategory!=AutomationTest
           use_postgres: true
+          postgres-version: ${{ matrix.postgres-version }}
 
   integration_test:
     needs: [prepare, backend]
@@ -190,7 +196,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Test
         uses: ./.github/actions/test
@@ -216,6 +222,8 @@ jobs:
       ]
     secrets: inherit
     uses: ./.github/workflows/deploy.yml
+    permissions:
+      contents: write
     with:
       framework: ${{ needs.prepare.outputs.framework }}
       branch: ${{ github.ref_name }}
@@ -241,7 +249,7 @@ jobs:
 
     steps:
       - name: Notify
-        uses: tsickert/discord-webhook@v6.0.0
+        uses: tsickert/discord-webhook@v7.0.0
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
           username: "GitHub Actions"

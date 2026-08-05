@@ -55,6 +55,7 @@ namespace NzbDrone.Core.Configuration
         public void SaveConfigDictionary(Dictionary<string, object> configValues)
         {
             var allWithDefaults = AllWithDefaults();
+            var hasUpdated = false;
 
             foreach (var configValue in configValues)
             {
@@ -68,11 +69,15 @@ namespace NzbDrone.Core.Configuration
 
                 if (!equal)
                 {
+                    hasUpdated = true;
                     SetValue(configValue.Key, configValue.Value.ToString());
                 }
             }
 
-            _eventAggregator.PublishEvent(new ConfigSavedEvent());
+            if (hasUpdated)
+            {
+                _eventAggregator.PublishEvent(new ConfigSavedEvent());
+            }
         }
 
         public bool IsDefined(string key)
@@ -186,7 +191,13 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("DownloadClientHistoryLimit", value); }
         }
 
-        // TODO: Rename to 'Skip Free Space Check'
+        public bool SkipFreeSpaceCheckWhenGrabbing
+        {
+            get { return GetValueBoolean("SkipFreeSpaceCheckWhenGrabbing", false); }
+
+            set { SetValue("SkipFreeSpaceCheckWhenGrabbing", value); }
+        }
+
         public bool SkipFreeSpaceCheckWhenImporting
         {
             get { return GetValueBoolean("SkipFreeSpaceCheckWhenImporting", false); }
@@ -264,6 +275,24 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("EpisodeTitleRequired", value); }
         }
 
+        public string UserRejectedExtensions
+        {
+            get { return GetValue("UserRejectedExtensions", string.Empty); }
+            set { SetValue("UserRejectedExtensions", value); }
+        }
+
+        public SeasonPackUpgradeType SeasonPackUpgrade
+        {
+            get { return GetValueEnum("SeasonPackUpgrade", SeasonPackUpgradeType.All); }
+            set { SetValue("SeasonPackUpgrade", value); }
+        }
+
+        public double SeasonPackUpgradeThreshold
+        {
+            get { return GetValueDouble("SeasonPackUpgradeThreshold", 100.0); }
+            set { SetValue("SeasonPackUpgradeThreshold", value); }
+        }
+
         public bool SetPermissionsLinux
         {
             get { return GetValueBoolean("SetPermissionsLinux", false); }
@@ -330,6 +359,13 @@ namespace NzbDrone.Core.Configuration
             get { return GetValue("TimeFormat", "h(:mm)a"); }
 
             set { SetValue("TimeFormat", value); }
+        }
+
+        public string TimeZone
+        {
+            get { return GetValue("TimeZone", ""); }
+
+            set { SetValue("TimeZone", value); }
         }
 
         public bool ShowRelativeDates
@@ -418,6 +454,11 @@ namespace NzbDrone.Core.Configuration
             return Convert.ToInt32(GetValue(key, defaultValue));
         }
 
+        private double GetValueDouble(string key, double defaultValue = 0)
+        {
+            return Convert.ToDouble(GetValue(key, defaultValue), CultureInfo.InvariantCulture);
+        }
+
         private T GetValueEnum<T>(string key, T defaultValue)
         {
             return (T)Enum.Parse(typeof(T), GetValue(key, defaultValue), true);
@@ -453,6 +494,11 @@ namespace NzbDrone.Core.Configuration
         private void SetValue(string key, int value)
         {
             SetValue(key, value.ToString());
+        }
+
+        private void SetValue(string key, double value)
+        {
+            SetValue(key, value.ToString(CultureInfo.InvariantCulture));
         }
 
         private void SetValue(string key, Enum value)

@@ -6,6 +6,7 @@ using NLog;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.MediaFiles.EpisodeImport;
 using NzbDrone.Core.Parser;
@@ -31,6 +32,7 @@ namespace NzbDrone.Core.MediaFiles
         private readonly IImportApprovedEpisodes _importApprovedEpisodes;
         private readonly IDetectSample _detectSample;
         private readonly IRuntimeInfo _runtimeInfo;
+        private readonly IConfigService _configService;
         private readonly Logger _logger;
 
         public DownloadedEpisodesImportService(IDiskProvider diskProvider,
@@ -41,6 +43,7 @@ namespace NzbDrone.Core.MediaFiles
                                                IImportApprovedEpisodes importApprovedEpisodes,
                                                IDetectSample detectSample,
                                                IRuntimeInfo runtimeInfo,
+                                               IConfigService configService,
                                                Logger logger)
         {
             _diskProvider = diskProvider;
@@ -51,6 +54,7 @@ namespace NzbDrone.Core.MediaFiles
             _importApprovedEpisodes = importApprovedEpisodes;
             _detectSample = detectSample;
             _runtimeInfo = runtimeInfo;
+            _configService = configService;
             _logger = logger;
         }
 
@@ -183,6 +187,7 @@ namespace NzbDrone.Core.MediaFiles
 
             var folderInfo = Parser.Parser.ParseTitle(directoryInfo.Name);
             var videoFiles = _diskScanService.FilterPaths(directoryInfo.FullName, _diskScanService.GetVideoFiles(directoryInfo.FullName));
+            var downloadClientItemInfo = downloadClientItem == null ? null : Parser.Parser.ParseTitle(downloadClientItem.Title);
 
             if (downloadClientItem == null)
             {
@@ -198,7 +203,17 @@ namespace NzbDrone.Core.MediaFiles
                 }
             }
 
-            var decisions = _importDecisionMaker.GetImportDecisions(videoFiles.ToList(), series, downloadClientItem, folderInfo, true);
+            if (downloadClientItemInfo is { IsMultiSeason: true })
+            {
+                _logger.Debug("Download client item is marked as multi-season, not processing automatically to avoid importing incorrect files");
+
+                return new List<ImportResult>
+                {
+                    RejectionResult(ImportRejectionReason.MultiSeason, "Multi-season download, unable to import automatically")
+                };
+            }
+
+            var decisions = _importDecisionMaker.GetImportDecisions(videoFiles.ToList(), series, downloadClientItem, downloadClientItemInfo, folderInfo, true);
             var importResults = _importApprovedEpisodes.Import(decisions, true, downloadClientItem, importMode);
 
             if (importMode == ImportMode.Auto)
@@ -280,6 +295,27 @@ namespace NzbDrone.Core.MediaFiles
                 };
             }
 
+            if (_configService.UserRejectedExtensions is not null)
+            {
+                var userRejectedExtensions = _configService.UserRejectedExtensions.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(e => e.Trim(' ', '.')
+                        .Insert(0, "."))
+                    .ToList();
+
+                if (userRejectedExtensions.Contains(extension))
+                {
+                    return new List<ImportResult>
+                    {
+                        new ImportResult(new ImportDecision(new LocalEpisode
+                                {
+                                    Path = fileInfo.FullName
+                                },
+                                new ImportRejection(ImportRejectionReason.UserRejectedExtension, $"Caution: Found file with user defined rejected extension: '{extension}'")),
+                            $"Caution: Found executable file with user defined rejected extension: '{extension}'")
+                    };
+                }
+            }
+
             if (extension.IsNullOrWhiteSpace() || !MediaFileExtensions.Extensions.Contains(extension))
             {
                 _logger.Debug("[{0}] has an unsupported extension: '{1}'", fileInfo.FullName, extension);
@@ -303,7 +339,8 @@ namespace NzbDrone.Core.MediaFiles
                 }
             }
 
-            var decisions = _importDecisionMaker.GetImportDecisions(new List<string>() { fileInfo.FullName }, series, downloadClientItem, null, true);
+            var downloadClientItemInfo = downloadClientItem == null ? null : Parser.Parser.ParseTitle(downloadClientItem.Title);
+            var decisions = _importDecisionMaker.GetImportDecisions(new List<string>() { fileInfo.FullName }, series, downloadClientItem, downloadClientItemInfo, null, true);
 
             return _importApprovedEpisodes.Import(decisions, true, downloadClientItem, importMode);
         }

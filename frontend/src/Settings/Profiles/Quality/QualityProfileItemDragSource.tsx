@@ -4,10 +4,11 @@ import { DragSourceMonitor, useDrag, useDrop, XYCoord } from 'react-dnd';
 import DragType from 'Helpers/DragType';
 import useMeasure from 'Helpers/Hooks/useMeasure';
 import { qualityProfileItemHeight } from 'Styles/Variables/dimensions';
-import { QualityProfileQualityItem } from 'typings/QualityProfile';
 import QualityProfileItem from './QualityProfileItem';
+import { ItemFailures, ItemFailuresMap } from './qualityProfileItemFailures';
 import QualityProfileItemGroup from './QualityProfileItemGroup';
 import { SizeChanged } from './QualityProfileItemSize';
+import { QualityProfileQualityItem } from './useQualityProfiles';
 import styles from './QualityProfileItemDragSource.css';
 
 export interface DragMoveState {
@@ -34,6 +35,7 @@ interface ItemProps {
   minSize: number | null;
   maxSize: number | null;
   preferredSize: number | null;
+  failures?: ItemFailures;
   isInGroup?: boolean;
   onCreateGroupPress?: (qualityId: number) => void;
   onItemAllowedChange: (id: number, allowed: boolean) => void;
@@ -44,6 +46,7 @@ interface GroupProps {
   qualityId: undefined;
   items: QualityProfileQualityItem[];
   qualityIndex: string;
+  itemFailures?: ItemFailuresMap;
   onDeleteGroupPress: (groupId: number) => void;
   onItemAllowedChange: (id: number, allowed: boolean) => void;
   onGroupAllowedChange: (id: number, allowed: boolean) => void;

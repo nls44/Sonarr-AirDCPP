@@ -10,30 +10,40 @@ import getQueryString, { QueryParams } from 'Utilities/Fetch/getQueryString';
 export interface QueryOptions<T> extends FetchJsonOptions<unknown> {
   queryParams?: QueryParams;
   queryOptions?:
-    | Omit<UndefinedInitialDataOptions<T, ApiError>, 'queryKey' | 'queryFn'>
+    | Omit<
+        UndefinedInitialDataOptions<Readonly<T>, ApiError>,
+        'queryKey' | 'queryFn'
+      >
     | undefined;
 }
 
 const useApiQuery = <T>(options: QueryOptions<T>) => {
-  const requestOptions = useMemo(() => {
+  const { queryKey, requestOptions } = useMemo(() => {
     const { path: path, queryOptions, queryParams, ...otherOptions } = options;
 
     return {
-      ...otherOptions,
-      path: getQueryPath(path) + getQueryString(queryParams),
-      headers: {
-        ...options.headers,
-        'X-Api-Key': window.Sonarr.apiKey,
+      queryKey: queryParams ? [path, queryParams] : [path],
+      requestOptions: {
+        ...otherOptions,
+        path: getQueryPath(path) + getQueryString(queryParams),
+        headers: {
+          ...options.headers,
+          'X-Api-Key': window.Sonarr.apiKey,
+          'X-Sonarr-Client': 'Sonarr',
+        },
       },
     };
   }, [options]);
 
-  return useQuery({
-    ...options.queryOptions,
-    queryKey: [requestOptions.path],
-    queryFn: async ({ signal }) =>
-      fetchJson<T, unknown>({ ...requestOptions, signal }),
-  });
+  return {
+    queryKey,
+    ...useQuery({
+      ...options.queryOptions,
+      queryKey,
+      queryFn: async ({ signal }) =>
+        fetchJson<Readonly<T>, unknown>({ ...requestOptions, signal }),
+    }),
+  };
 };
 
 export default useApiQuery;

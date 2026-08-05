@@ -1,7 +1,20 @@
 import moment from 'moment';
 import React, { useCallback, useMemo } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import AppState from 'App/State/AppState';
+import { useAppDimensions } from 'App/appStore';
+import {
+  setCalendarOption,
+  useCalendarOption,
+} from 'Calendar/calendarOptionsStore';
+import { CalendarView } from 'Calendar/calendarViews';
+import useCalendar, {
+  goToDate,
+  goToNextRange,
+  goToPreviousRange,
+  goToToday,
+  useCalendarRange,
+  useCalendarTime,
+} from 'Calendar/useCalendar';
+import DateInput from 'Components/DateInput';
 import Icon from 'Components/Icon';
 import Button from 'Components/Link/Button';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
@@ -10,49 +23,48 @@ import MenuButton from 'Components/Menu/MenuButton';
 import MenuContent from 'Components/Menu/MenuContent';
 import ViewMenuItem from 'Components/Menu/ViewMenuItem';
 import { align, icons } from 'Helpers/Props';
-import {
-  gotoCalendarNextRange,
-  gotoCalendarPreviousRange,
-  gotoCalendarToday,
-  setCalendarView,
-} from 'Store/Actions/calendarActions';
-import createDimensionsSelector from 'Store/Selectors/createDimensionsSelector';
-import createUISettingsSelector from 'Store/Selectors/createUISettingsSelector';
+import { useUiSettingsValues } from 'Settings/UI/useUiSettings';
 import translate from 'Utilities/String/translate';
 import CalendarHeaderViewButton from './CalendarHeaderViewButton';
 import styles from './CalendarHeader.css';
 
 function CalendarHeader() {
-  const dispatch = useDispatch();
+  const { isFetching } = useCalendar();
+  const view = useCalendarOption('view');
+  const time = useCalendarTime();
+  const { start, end } = useCalendarRange();
 
-  const { isFetching, view, time, start, end } = useSelector(
-    (state: AppState) => state.calendar
-  );
+  const { isSmallScreen, isLargeScreen } = useAppDimensions();
 
-  const { isSmallScreen, isLargeScreen } = useSelector(
-    createDimensionsSelector()
-  );
+  const { longDateFormat } = useUiSettingsValues();
 
-  const { longDateFormat } = useSelector(createUISettingsSelector());
-
-  const handleViewChange = useCallback(
-    (newView: string) => {
-      dispatch(setCalendarView({ view: newView }));
-    },
-    [dispatch]
-  );
+  const handleViewChange = useCallback((newView: string) => {
+    setCalendarOption('view', newView as CalendarView);
+  }, []);
 
   const handleTodayPress = useCallback(() => {
-    dispatch(gotoCalendarToday());
-  }, [dispatch]);
+    goToToday();
+  }, []);
 
   const handlePreviousPress = useCallback(() => {
-    dispatch(gotoCalendarPreviousRange());
-  }, [dispatch]);
+    goToPreviousRange();
+  }, []);
 
   const handleNextPress = useCallback(() => {
-    dispatch(gotoCalendarNextRange());
-  }, [dispatch]);
+    goToNextRange();
+  }, []);
+
+  const datePickerValue = useMemo(() => {
+    if (view === 'month') {
+      return moment(time).startOf('month').format('YYYY-MM-DD');
+    }
+
+    if (start) {
+      return moment(start).format('YYYY-MM-DD');
+    }
+
+    return '';
+  }, [view, time, start]);
 
   const title = useMemo(() => {
     const timeMoment = moment(time);
@@ -112,6 +124,14 @@ function CalendarHeader() {
           >
             {translate('Today')}
           </Button>
+
+          <DateInput
+            className={styles.datePicker}
+            value={datePickerValue}
+            label={translate('GoToDate')}
+            isDisabled={view === 'agenda'}
+            onChange={goToDate}
+          />
         </div>
 
         {isSmallScreen ? null : (

@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import AppState from 'App/State/AppState';
-import * as commandNames from 'Commands/commandNames';
+import React, { useCallback } from 'react';
+import { SelectProvider, useSelect } from 'App/Select/SelectContext';
+import CommandNames from 'Commands/CommandNames';
+import { useExecuteCommand } from 'Commands/useCommands';
 import Alert from 'Components/Alert';
 import CheckInput from 'Components/Form/CheckInput';
 import Button from 'Components/Link/Button';
@@ -11,18 +11,14 @@ import ModalBody from 'Components/Modal/ModalBody';
 import ModalContent from 'Components/Modal/ModalContent';
 import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
-import useSelectState from 'Helpers/Hooks/useSelectState';
 import { kinds } from 'Helpers/Props';
 import formatSeason from 'Season/formatSeason';
-import useSeries from 'Series/useSeries';
-import { executeCommand } from 'Store/Actions/commandActions';
-import { fetchOrganizePreview } from 'Store/Actions/organizePreviewActions';
-import { fetchNamingSettings } from 'Store/Actions/settingsActions';
+import { useSingleSeries } from 'Series/useSeries';
+import { useNamingSettings } from 'Settings/MediaManagement/Naming/useNamingSettings';
 import { CheckInputChanged } from 'typings/inputs';
-import { SelectStateInputProps } from 'typings/props';
 import translate from 'Utilities/String/translate';
-import getSelectedIds from 'Utilities/Table/getSelectedIds';
 import OrganizePreviewRow from './OrganizePreviewRow';
+import useOrganizePreview, { OrganizePreviewModel } from './useOrganizePreview';
 import styles from './OrganizePreviewModalContent.css';
 
 function getValue(allSelected: boolean, allUnselected: boolean) {
@@ -41,32 +37,33 @@ export interface OrganizePreviewModalContentProps {
   onModalClose: () => void;
 }
 
-function OrganizePreviewModalContent({
+function OrganizePreviewModalContentInner({
   seriesId,
   seasonNumber,
   onModalClose,
 }: OrganizePreviewModalContentProps) {
-  const dispatch = useDispatch();
+  const executeCommand = useExecuteCommand();
   const {
     items,
     isFetching: isPreviewFetching,
-    isPopulated: isPreviewPopulated,
+    isFetched: isPreviewFetched,
     error: previewError,
-  } = useSelector((state: AppState) => state.organizePreview);
+  } = useOrganizePreview(seriesId, seasonNumber);
 
   const {
     isFetching: isNamingFetching,
-    isPopulated: isNamingPopulated,
+    isFetched: isNamingFetched,
     error: namingError,
-    item: naming,
-  } = useSelector((state: AppState) => state.settings.naming);
+    data: naming,
+  } = useNamingSettings();
 
-  const series = useSeries(seriesId)!;
-  const [selectState, setSelectState] = useSelectState();
+  const series = useSingleSeries(seriesId)!;
 
-  const { allSelected, allUnselected, selectedState } = selectState;
+  const { allSelected, allUnselected, getSelectedIds, selectAll, unselectAll } =
+    useSelect<OrganizePreviewModel>();
+
   const isFetching = isPreviewFetching || isNamingFetching;
-  const isPopulated = isPreviewPopulated && isNamingPopulated;
+  const isPopulated = isPreviewFetched && isNamingFetched;
   const error = previewError || namingError;
   const { renameEpisodes } = naming;
   const episodeFormat = naming[`${series.seriesType}EpisodeFormat`];
@@ -75,42 +72,26 @@ function OrganizePreviewModalContent({
 
   const handleSelectAllChange = useCallback(
     ({ value }: CheckInputChanged) => {
-      setSelectState({ type: value ? 'selectAll' : 'unselectAll', items });
+      if (value) {
+        selectAll();
+      } else {
+        unselectAll();
+      }
     },
-    [items, setSelectState]
-  );
-
-  const handleSelectedChange = useCallback(
-    ({ id, value, shiftKey = false }: SelectStateInputProps) => {
-      setSelectState({
-        type: 'toggleSelected',
-        items,
-        id,
-        isSelected: value,
-        shiftKey,
-      });
-    },
-    [items, setSelectState]
+    [selectAll, unselectAll]
   );
 
   const handleOrganizePress = useCallback(() => {
-    const files = getSelectedIds(selectedState);
+    const files = getSelectedIds();
 
-    dispatch(
-      executeCommand({
-        name: commandNames.RENAME_FILES,
-        files,
-        seriesId,
-      })
-    );
+    executeCommand({
+      name: CommandNames.RenameFiles,
+      files,
+      seriesId,
+    });
 
     onModalClose();
-  }, [seriesId, selectedState, dispatch, onModalClose]);
-
-  useEffect(() => {
-    dispatch(fetchOrganizePreview({ seriesId, seasonNumber }));
-    dispatch(fetchNamingSettings());
-  }, [seriesId, seasonNumber, dispatch]);
+  }, [seriesId, getSelectedIds, executeCommand, onModalClose]);
 
   return (
     <ModalContent onModalClose={onModalClose}>
@@ -167,8 +148,6 @@ function OrganizePreviewModalContent({
                     id={item.episodeFileId}
                     existingPath={item.existingPath}
                     newPath={item.newPath}
-                    isSelected={selectedState[item.episodeFileId]}
-                    onSelectedChange={handleSelectedChange}
                   />
                 );
               })}
@@ -183,6 +162,7 @@ function OrganizePreviewModalContent({
             className={styles.selectAllInput}
             containerClassName={styles.selectAllInputContainer}
             name="selectAll"
+            ariaLabel={translate('SelectAll')}
             value={selectAllValue}
             onChange={handleSelectAllChange}
           />
@@ -195,6 +175,24 @@ function OrganizePreviewModalContent({
         </Button>
       </ModalFooter>
     </ModalContent>
+  );
+}
+
+function OrganizePreviewModalContent({
+  seriesId,
+  seasonNumber,
+  onModalClose,
+}: OrganizePreviewModalContentProps) {
+  const { items } = useOrganizePreview(seriesId, seasonNumber);
+
+  return (
+    <SelectProvider<OrganizePreviewModel> items={items}>
+      <OrganizePreviewModalContentInner
+        seriesId={seriesId}
+        seasonNumber={seasonNumber}
+        onModalClose={onModalClose}
+      />
+    </SelectProvider>
   );
 }
 

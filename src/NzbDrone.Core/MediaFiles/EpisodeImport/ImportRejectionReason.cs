@@ -7,6 +7,7 @@ public enum ImportRejectionReason
     UnknownSeries,
     DangerousFile,
     ExecutableFile,
+    UserRejectedExtension,
     ArchiveFile,
     SeriesFolder,
     InvalidFilePath,
@@ -35,5 +36,7 @@ public enum ImportRejectionReason
     UnverifiedSceneMapping,
     NotQualityUpgrade,
     NotRevisionUpgrade,
-    NotCustomFormatUpgrade
+    NotCustomFormatUpgrade,
+    NotCustomFormatUpgradeAfterRename,
+    MultiSeason
 }

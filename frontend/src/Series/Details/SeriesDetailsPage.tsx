@@ -1,16 +1,15 @@
 import React, { useEffect } from 'react';
-import { useSelector } from 'react-redux';
-import { useHistory, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import NotFound from 'Components/NotFound';
 import usePrevious from 'Helpers/Hooks/usePrevious';
-import createAllSeriesSelector from 'Store/Selectors/createAllSeriesSelector';
+import useSeries from 'Series/useSeries';
 import translate from 'Utilities/String/translate';
 import SeriesDetails from './SeriesDetails';
 
 function SeriesDetailsPage() {
-  const allSeries = useSelector(createAllSeriesSelector());
+  const { data: allSeries } = useSeries();
   const { titleSlug } = useParams<{ titleSlug: string }>();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const seriesIndex = allSeries.findIndex(
     (series) => series.titleSlug === titleSlug
@@ -24,9 +23,9 @@ function SeriesDetailsPage() {
       previousIndex !== -1 &&
       previousIndex !== undefined
     ) {
-      history.push(`${window.Sonarr.urlBase}/`);
+      navigate('/');
     }
-  }, [seriesIndex, previousIndex, history]);
+  }, [seriesIndex, previousIndex, navigate]);
 
   if (seriesIndex === -1) {
     return <NotFound message={translate('SeriesCannotBeFound')} />;

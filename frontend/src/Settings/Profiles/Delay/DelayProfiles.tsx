@@ -1,66 +1,31 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { createSelector } from 'reselect';
-import AppState from 'App/State/AppState';
+import React, { useCallback, useState } from 'react';
 import FieldSet from 'Components/FieldSet';
-import Icon from 'Components/Icon';
-import Link from 'Components/Link/Link';
+import IconButton from 'Components/Link/IconButton';
 import PageSectionContent from 'Components/Page/PageSectionContent';
 import Scroller from 'Components/Scroller/Scroller';
 import { icons, scrollDirections } from 'Helpers/Props';
-import {
-  fetchDelayProfiles,
-  reorderDelayProfile,
-} from 'Store/Actions/settingsActions';
-import createTagsSelector from 'Store/Selectors/createTagsSelector';
-import DelayProfileModel from 'typings/DelayProfile';
+import { useTagList } from 'Tags/useTags';
 import translate from 'Utilities/String/translate';
 import DelayProfile from './DelayProfile';
 import EditDelayProfileModal from './EditDelayProfileModal';
+import {
+  useReorderDelayProfile,
+  useSortedDelayProfiles,
+} from './useDelayProfiles';
 import styles from './DelayProfiles.css';
 
-function createDisplayProfilesSelector() {
-  return createSelector(
-    (state: AppState) => state.settings.delayProfiles,
-    (delayProfiles) => {
-      const { defaultProfile, items } = delayProfiles.items.reduce<{
-        defaultProfile: null | DelayProfileModel;
-        items: DelayProfileModel[];
-      }>(
-        (acc, item) => {
-          if (item.id === 1) {
-            acc.defaultProfile = item;
-          } else {
-            acc.items.push(item);
-          }
-
-          return acc;
-        },
-        {
-          defaultProfile: null,
-          items: [],
-        }
-      );
-
-      items.sort((a, b) => a.order - b.order);
-
-      return {
-        defaultProfile,
-        ...delayProfiles,
-        items,
-      };
-    }
-  );
-}
-
 function DelayProfiles() {
-  const dispatch = useDispatch();
+  const {
+    error,
+    isFetching,
+    isFetched: isPopulated,
+    items,
+    defaultProfile,
+  } = useSortedDelayProfiles();
 
-  const { error, isFetching, isPopulated, items, defaultProfile } = useSelector(
-    createDisplayProfilesSelector()
-  );
+  const { reorderDelayProfile } = useReorderDelayProfile();
 
-  const tagList = useSelector(createTagsSelector());
+  const tagList = useTagList();
 
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
@@ -98,18 +63,22 @@ function DelayProfiles() {
   const handleDelayProfileDragEnd = useCallback(
     (id: number, didDrop: boolean) => {
       if (didDrop && dropIndex !== null) {
-        dispatch(reorderDelayProfile({ id, moveIndex: dropIndex - 1 }));
+        const moveOrder = dropIndex;
+        const moving = items.find((p) => p.id === id);
+
+        if (moving && moving.order !== moveOrder) {
+          const after =
+            moveOrder > 1 ? items.find((p) => p.order === moveOrder - 1) : null;
+
+          reorderDelayProfile({ id, after: after?.id });
+        }
       }
 
       setDragIndex(null);
       setDropIndex(null);
     },
-    [dropIndex, dispatch]
+    [dropIndex, items, reorderDelayProfile]
   );
-
-  useEffect(() => {
-    dispatch(fetchDelayProfiles());
-  }, [dispatch]);
 
   return (
     <FieldSet legend={translate('DelayProfiles')}>
@@ -166,12 +135,13 @@ function DelayProfiles() {
         </Scroller>
 
         <div className={styles.addDelayProfile}>
-          <Link
+          <IconButton
             className={styles.addButton}
+            name={icons.ADD}
+            aria-label={translate('AddDelayProfile')}
+            title={translate('AddDelayProfile')}
             onPress={handleAddDelayProfilePress}
-          >
-            <Icon name={icons.ADD} />
-          </Link>
+          />
         </div>
 
         <EditDelayProfileModal

@@ -1,8 +1,10 @@
+using System.Text.Json.Serialization;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Languages;
 using NzbDrone.Core.MediaCover;
 using NzbDrone.Core.Tv;
 using Sonarr.Http.REST;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace Sonarr.Api.V5.Series;
 
@@ -35,6 +37,8 @@ public class SeriesResource : RestResource
     public int TvRageId { get; set; }
     public int TvMazeId { get; set; }
     public int TmdbId { get; set; }
+    public HashSet<int>? MalIds { get; set; }
+    public HashSet<int>? AniListIds { get; set; }
     public DateTime? FirstAired { get; set; }
     public DateTime? LastAired { get; set; }
     public SeriesTypes SeriesType { get; set; }
@@ -45,12 +49,16 @@ public class SeriesResource : RestResource
     public string? Folder { get; set; }
     public string? Certification { get; set; }
     public List<string>? Genres { get; set; }
+    public string? OriginalCountry { get; set; }
     public HashSet<int>? Tags { get; set; }
     public DateTime Added { get; set; }
     public AddSeriesOptions? AddOptions { get; set; }
     public Ratings? Ratings { get; set; }
     public SeriesStatisticsResource? Statistics { get; set; }
     public bool? EpisodesChanged { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    [SwaggerIgnore]
+    public bool? IsExcluded { get; set; }
 }
 
 public static class SeriesResourceMapper
@@ -69,6 +77,7 @@ public static class SeriesResourceMapper
             Images = model.Images.JsonClone(),
             Seasons = model.Seasons.ToResource(includeSeasonImages),
             Year = model.Year,
+            OriginalCountry = model.OriginalCountry,
             OriginalLanguage = model.OriginalLanguage,
             Path = model.Path,
             QualityProfileId = model.QualityProfileId,
@@ -81,6 +90,8 @@ public static class SeriesResourceMapper
             TvRageId = model.TvRageId,
             TvMazeId = model.TvMazeId,
             TmdbId = model.TmdbId,
+            MalIds = model.MalIds,
+            AniListIds = model.AniListIds,
             FirstAired = model.FirstAired,
             LastAired = model.LastAired,
             SeriesType = model.SeriesType,
@@ -122,6 +133,8 @@ public static class SeriesResourceMapper
             TvRageId = resource.TvRageId,
             TvMazeId = resource.TvMazeId,
             TmdbId = resource.TmdbId,
+            MalIds = resource.MalIds,
+            AniListIds = resource.AniListIds,
             FirstAired = resource.FirstAired,
             SeriesType = resource.SeriesType,
             CleanTitle = resource.CleanTitle,

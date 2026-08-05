@@ -15,12 +15,15 @@ namespace NzbDrone.Core.Notifications.Webhook
         public int TvMazeId { get; set; }
         public int TmdbId { get; set; }
         public string ImdbId { get; set; }
+        public HashSet<int> MalIds { get; set; }
+        public HashSet<int> AniListIds { get; set; }
         public SeriesTypes Type { get; set; }
         public int Year { get; set; }
         public List<string> Genres { get; set; }
         public List<WebhookImage> Images { get; set; }
         public List<string> Tags { get; set; }
         public Language OriginalLanguage { get; set; }
+        public string OriginalCountry { get; set; }
 
         public WebhookSeries()
         {
@@ -36,12 +39,15 @@ namespace NzbDrone.Core.Notifications.Webhook
             TvMazeId = series.TvMazeId;
             TmdbId = series.TmdbId;
             ImdbId = series.ImdbId;
+            MalIds = series.MalIds;
+            AniListIds = series.AniListIds;
             Type = series.SeriesType;
             Year = series.Year;
             Genres = series.Genres;
             Images = series.Images.Select(i => new WebhookImage(i)).ToList();
             Tags = tags;
             OriginalLanguage = series.OriginalLanguage;
+            OriginalCountry = series.OriginalCountry;
         }
     }
 }

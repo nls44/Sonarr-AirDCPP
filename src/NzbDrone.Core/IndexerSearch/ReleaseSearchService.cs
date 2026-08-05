@@ -102,6 +102,12 @@ namespace NzbDrone.Core.IndexerSearch
                 episodes = episodes.Where(e => !e.HasFile).ToList();
             }
 
+            if (episodes.Count == 0)
+            {
+                _logger.Debug("No wanted episodes found for season {0}", seasonNumber);
+                return new List<DownloadDecision>();
+            }
+
             return await SeasonSearch(seriesId, seasonNumber, episodes, monitoredOnly, userInvokedSearch, interactiveSearch);
         }
 
@@ -402,6 +408,12 @@ namespace NzbDrone.Core.IndexerSearch
                 .Where(ep => ep.AirDateUtc.HasValue && ep.AirDateUtc.Value.Before(DateTime.UtcNow))
                 .ToList();
 
+            var seasonEpisodes = episodes.Select(e => e.SeasonNumber).Distinct()
+                .SelectMany(seasonNumber => _episodeService.GetEpisodesBySeason(series.Id, seasonNumber))
+                .ToList();
+
+            var allEpisodesAiredOrAiringSoon = seasonEpisodes.All(ep => ep.AirDateUtc.HasValue && !ep.AirDateUtc.Value.After(DateTime.UtcNow.AddHours(24)));
+
             var seasonsToSearch = GetSceneSeasonMappings(series, episodesToSearch)
                 .GroupBy(ep => ep.SeasonNumber)
                 .Select(epList => epList.First())
@@ -415,7 +427,7 @@ namespace NzbDrone.Core.IndexerSearch
                 downloadDecisions.AddRange(decisions);
             }
 
-            foreach (var episode in episodesToSearch)
+            foreach (var episode in episodesToSearch.Where(ep => !allEpisodesAiredOrAiringSoon))
             {
                 downloadDecisions.AddRange(await SearchAnime(series, episode, monitoredOnly, userInvokedSearch, interactiveSearch, true));
             }

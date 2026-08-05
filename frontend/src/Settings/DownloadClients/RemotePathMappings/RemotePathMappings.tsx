@@ -1,25 +1,18 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import AppState from 'App/State/AppState';
+import React, { useCallback, useState } from 'react';
 import Alert from 'Components/Alert';
 import FieldSet from 'Components/FieldSet';
-import Icon from 'Components/Icon';
-import Link from 'Components/Link/Link';
+import IconButton from 'Components/Link/IconButton';
 import InlineMarkdown from 'Components/Markdown/InlineMarkdown';
 import PageSectionContent from 'Components/Page/PageSectionContent';
 import { icons, kinds } from 'Helpers/Props';
-import { fetchRemotePathMappings } from 'Store/Actions/settingsActions';
 import translate from 'Utilities/String/translate';
 import EditRemotePathMappingModal from './EditRemotePathMappingModal';
 import RemotePathMapping from './RemotePathMapping';
+import { useRemotePathMappings } from './useRemotePathMappings';
 import styles from './RemotePathMappings.css';
 
 function RemotePathMappings() {
-  const dispatch = useDispatch();
-
-  const { isFetching, isPopulated, error, items } = useSelector(
-    (state: AppState) => state.settings.remotePathMappings
-  );
+  const { isFetching, isFetched, error, data } = useRemotePathMappings();
 
   const [isAddRemotePathMappingModalOpen, setIsAddRemotePathMappingModalOpen] =
     useState(false);
@@ -32,17 +25,13 @@ function RemotePathMappings() {
     setIsAddRemotePathMappingModalOpen(false);
   }, []);
 
-  useEffect(() => {
-    dispatch(fetchRemotePathMappings());
-  }, [dispatch]);
-
   return (
     <FieldSet legend={translate('RemotePathMappings')}>
       <PageSectionContent
         errorMessage={translate('RemotePathMappingsLoadError')}
         error={error}
         isFetching={isFetching}
-        isPopulated={isPopulated}
+        isPopulated={isFetched}
       >
         <Alert kind={kinds.INFO}>
           <InlineMarkdown
@@ -60,18 +49,19 @@ function RemotePathMappings() {
         </div>
 
         <div>
-          {items.map((item) => {
+          {data.map((item) => {
             return <RemotePathMapping key={item.id} {...item} />;
           })}
         </div>
 
         <div className={styles.addRemotePathMapping}>
-          <Link
+          <IconButton
             className={styles.addButton}
+            name={icons.ADD}
+            aria-label={translate('AddRemotePathMapping')}
+            title={translate('AddRemotePathMapping')}
             onPress={handleAddRemotePathMappingPress}
-          >
-            <Icon name={icons.ADD} />
-          </Link>
+          />
         </div>
 
         <EditRemotePathMappingModal

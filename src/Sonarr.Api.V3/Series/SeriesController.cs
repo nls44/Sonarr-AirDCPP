@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using FluentValidation;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.DataAugmentation.Scene;
@@ -130,7 +131,7 @@ namespace Sonarr.Api.V3.Series
         }
 
         [NonAction]
-        public override ActionResult<SeriesResource> GetResourceByIdWithErrorHandler(int id)
+        public override Results<Ok<SeriesResource>, NotFound> GetResourceByIdWithErrorHandler(int id)
         {
             return base.GetResourceByIdWithErrorHandler(id);
         }
@@ -227,7 +228,7 @@ namespace Sonarr.Api.V3.Series
             return resource;
         }
 
-        private void MapCoversToLocal(params SeriesResource[] series)
+        private void MapCoversToLocal(params IEnumerable<SeriesResource> series)
         {
             foreach (var seriesResource in series)
             {
@@ -237,7 +238,7 @@ namespace Sonarr.Api.V3.Series
 
         private void FetchAndLinkSeriesStatistics(SeriesResource resource)
         {
-            LinkSeriesStatistics(resource, _seriesStatisticsService.SeriesStatistics(resource.Id));
+            LinkSeriesStatistics(resource, _seriesStatisticsService.SeriesStatistics(resource.Id, resource.QualityProfileId));
         }
 
         private void LinkSeriesStatistics(List<SeriesResource> resources, Dictionary<int, SeriesStatistics> seriesStatistics)

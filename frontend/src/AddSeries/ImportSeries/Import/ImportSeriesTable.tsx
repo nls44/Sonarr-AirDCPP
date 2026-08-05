@@ -1,33 +1,25 @@
-import React, { RefObject, useCallback, useEffect, useRef } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { RefObject, useCallback, useRef } from 'react';
 import { FixedSizeList, ListChildComponentProps } from 'react-window';
-import { useAddSeriesOptions } from 'AddSeries/addSeriesOptionsStore';
-import { useSelect } from 'App/SelectContext';
-import AppState from 'App/State/AppState';
-import { ImportSeries } from 'App/State/ImportSeriesAppState';
+import { useAppDimension } from 'App/appStore';
+import { useSelect } from 'App/Select/SelectContext';
 import VirtualTable from 'Components/Table/VirtualTable';
-import usePrevious from 'Helpers/Hooks/usePrevious';
-import {
-  queueLookupSeries,
-  setImportSeriesValue,
-} from 'Store/Actions/importSeriesActions';
-import createAllSeriesSelector from 'Store/Selectors/createAllSeriesSelector';
-import createDimensionsSelector from 'Store/Selectors/createDimensionsSelector';
 import { CheckInputChanged } from 'typings/inputs';
-import { SelectStateInputProps } from 'typings/props';
-import { UnmappedFolder } from 'typings/RootFolder';
 import ImportSeriesHeader from './ImportSeriesHeader';
 import ImportSeriesRow from './ImportSeriesRow';
+import {
+  UnamppedFolderItem,
+  useEnsureImportSeriesItems,
+} from './importSeriesStore';
 import styles from './ImportSeriesTable.css';
 
 const ROW_HEIGHT = 52;
 
 interface RowItemData {
-  items: ImportSeries[];
+  items: UnamppedFolderItem[];
 }
 
 interface ImportSeriesTableProps {
-  unmappedFolders: UnmappedFolder[];
+  items: UnamppedFolderItem[];
   scrollerRef: RefObject<HTMLElement>;
 }
 
@@ -49,138 +41,34 @@ function Row({ index, style, data }: ListChildComponentProps<RowItemData>) {
       }}
       className={styles.row}
     >
-      <ImportSeriesRow key={item.id} id={item.id} />
+      <ImportSeriesRow key={item.id} unmappedFolder={item} />
     </div>
   );
 }
 
-function ImportSeriesTable({
-  unmappedFolders,
-  scrollerRef,
-}: ImportSeriesTableProps) {
-  const dispatch = useDispatch();
-
-  const { monitor, qualityProfileId, seriesType, seasonFolder } =
-    useAddSeriesOptions();
-
-  const items = useSelector((state: AppState) => state.importSeries.items);
-  const { isSmallScreen } = useSelector(createDimensionsSelector());
-  const allSeries = useSelector(createAllSeriesSelector());
-  const [selectState, selectDispatch] = useSelect();
-
-  const defaultValues = useRef({
-    monitor,
-    qualityProfileId,
-    seriesType,
-    seasonFolder,
-  });
+function ImportSeriesTable({ items, scrollerRef }: ImportSeriesTableProps) {
+  const isSmallScreen = useAppDimension('isSmallScreen');
+  const { allSelected, allUnselected, selectAll, unselectAll, useHasItems } =
+    useSelect();
 
   const listRef = useRef<FixedSizeList<RowItemData>>(null);
-  const initialUnmappedFolders = useRef(unmappedFolders);
-  const previousItems = usePrevious(items);
-  const { allSelected, allUnselected, selectedState } = selectState;
 
   const handleSelectAllChange = useCallback(
     ({ value }: CheckInputChanged) => {
-      selectDispatch({
-        type: value ? 'selectAll' : 'unselectAll',
-      });
+      if (value) {
+        selectAll();
+      } else {
+        unselectAll();
+      }
     },
-    [selectDispatch]
+    [selectAll, unselectAll]
   );
 
-  const handleSelectedChange = useCallback(
-    ({ id, value, shiftKey }: SelectStateInputProps) => {
-      selectDispatch({
-        type: 'toggleSelected',
-        id,
-        isSelected: value,
-        shiftKey,
-      });
-    },
-    [selectDispatch]
-  );
+  const hasSelectItems = useHasItems();
 
-  const handleRemoveSelectedStateItem = useCallback(
-    (id: string) => {
-      selectDispatch({
-        type: 'removeItem',
-        id,
-      });
-    },
-    [selectDispatch]
-  );
+  useEnsureImportSeriesItems(items);
 
-  useEffect(() => {
-    initialUnmappedFolders.current.forEach(({ name, path, relativePath }) => {
-      dispatch(
-        queueLookupSeries({
-          name,
-          path,
-          relativePath,
-          term: name,
-        })
-      );
-
-      dispatch(
-        // @ts-expect-error - actions are not typed
-        setImportSeriesValue({
-          id: name,
-          ...defaultValues.current,
-        })
-      );
-    });
-  }, [dispatch]);
-
-  useEffect(() => {
-    previousItems?.forEach((prevItem) => {
-      const { id } = prevItem;
-
-      const item = items.find((i) => i.id === id);
-
-      if (!item) {
-        handleRemoveSelectedStateItem(id);
-        return;
-      }
-
-      const selectedSeries = item.selectedSeries;
-      const isSelected = selectedState[id];
-
-      const isExistingSeries =
-        !!selectedSeries &&
-        allSeries.some((s) => s.tvdbId === selectedSeries.tvdbId);
-
-      if (
-        (!selectedSeries && prevItem.selectedSeries) ||
-        (isExistingSeries && !prevItem.selectedSeries)
-      ) {
-        handleSelectedChange({ id, value: false, shiftKey: false });
-
-        return;
-      }
-
-      if (isSelected && (!selectedSeries || isExistingSeries)) {
-        handleSelectedChange({ id, value: false, shiftKey: false });
-
-        return;
-      }
-
-      if (selectedSeries && selectedSeries !== prevItem.selectedSeries) {
-        handleSelectedChange({ id, value: true, shiftKey: false });
-
-        return;
-      }
-    });
-  }, [
-    allSeries,
-    items,
-    previousItems,
-    selectedState,
-    handleRemoveSelectedStateItem,
-    handleSelectedChange,
-  ]);
-
-  if (!items.length) {
+  if (!items.length || !hasSelectItems) {
     return null;
   }
 

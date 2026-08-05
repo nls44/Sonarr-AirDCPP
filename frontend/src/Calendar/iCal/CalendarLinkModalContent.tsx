@@ -22,7 +22,12 @@ interface CalendarLinkModalContentProps {
 function CalendarLinkModalContent({
   onModalClose,
 }: CalendarLinkModalContentProps) {
-  const [state, setState] = useState({
+  const [state, setState] = useState<{
+    unmonitored: boolean;
+    premieresOnly: boolean;
+    asAllDay: boolean;
+    tags: number[];
+  }>({
     unmonitored: false,
     premieresOnly: false,
     asAllDay: false,
@@ -43,7 +48,7 @@ function CalendarLinkModalContent({
   );
 
   const { iCalHttpUrl, iCalWebCalUrl } = useMemo(() => {
-    let icalUrl = `${window.location.host}${window.Sonarr.urlBase}/feed/v3/calendar/Sonarr.ics?`;
+    let icalUrl = `${window.location.host}${window.Sonarr.urlBase}/feed/v5/calendar/Sonarr.ics?`;
 
     if (unmonitored) {
       icalUrl += 'unmonitored=true&';

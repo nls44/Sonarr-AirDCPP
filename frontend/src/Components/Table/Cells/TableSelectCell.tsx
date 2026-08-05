@@ -2,23 +2,25 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import CheckInput from 'Components/Form/CheckInput';
 import { CheckInputChanged } from 'typings/inputs';
 import { SelectStateInputProps } from 'typings/props';
+import translate from 'Utilities/String/translate';
 import TableRowCell, { TableRowCellProps } from './TableRowCell';
 import styles from './TableSelectCell.css';
 
-interface TableSelectCellProps extends Omit<TableRowCellProps, 'id'> {
+interface TableSelectCellProps<T extends number | string = number>
+  extends Omit<TableRowCellProps, 'id'> {
   className?: string;
-  id: number | string;
+  id: T;
   isSelected?: boolean;
-  onSelectedChange: (options: SelectStateInputProps) => void;
+  onSelectedChange: (options: SelectStateInputProps<T>) => void;
 }
 
-function TableSelectCell({
+function TableSelectCell<T extends number | string = number>({
   className = styles.selectCell,
   id,
   isSelected = false,
   onSelectedChange,
   ...otherProps
-}: TableSelectCellProps) {
+}: TableSelectCellProps<T>) {
   const initialIsSelected = useRef(isSelected);
   const handleSelectedChange = useRef(onSelectedChange);
 
@@ -48,6 +50,7 @@ function TableSelectCell({
       <CheckInput
         className={styles.input}
         name={id.toString()}
+        ariaLabel={translate('SelectRow')}
         value={isSelected}
         {...otherProps}
         onChange={handleChange}

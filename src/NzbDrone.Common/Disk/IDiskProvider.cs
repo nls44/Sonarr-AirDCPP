@@ -37,7 +37,6 @@ namespace NzbDrone.Common.Disk
         bool TryCreateSymLink(string source, string destination);
         string GetRealPath(string symlinkPath);
         string GetDirectoryName(string path);
-        bool TryCreateRefLink(string source, string destination);
         void DeleteFolder(string path, bool recursive);
         string ReadAllText(string filePath);
         void WriteAllText(string filename, string contents);

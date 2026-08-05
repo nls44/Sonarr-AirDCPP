@@ -1,4 +1,3 @@
-import { push } from 'connected-react-router';
 import { ExtendedKeyboardEvent } from 'mousetrap';
 import React, {
   FormEvent,
@@ -11,18 +10,15 @@ import React, {
   useState,
 } from 'react';
 import Autosuggest from 'react-autosuggest';
-import { useDispatch, useSelector } from 'react-redux';
-import { createSelector } from 'reselect';
-import { Tag } from 'App/State/TagsAppState';
+import { useNavigate } from 'react-router-dom';
+import { useDebouncedCallback } from 'use-debounce';
 import Icon from 'Components/Icon';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
-import useDebouncedCallback from 'Helpers/Hooks/useDebouncedCallback';
 import useKeyboardShortcuts from 'Helpers/Hooks/useKeyboardShortcuts';
 import { icons } from 'Helpers/Props';
 import Series from 'Series/Series';
-import createAllSeriesSelector from 'Store/Selectors/createAllSeriesSelector';
-import createDeepEqualSelector from 'Store/Selectors/createDeepEqualSelector';
-import createTagsSelector from 'Store/Selectors/createTagsSelector';
+import useSeries from 'Series/useSeries';
+import { Tag, useTagList } from 'Tags/useTags';
 import translate from 'Utilities/String/translate';
 import SeriesSearchResult from './SeriesSearchResult';
 import styles from './SeriesSearchInput.css';
@@ -70,61 +66,53 @@ interface Section {
   suggestions: SeriesSuggestion[] | AddNewSeriesSuggestion[];
 }
 
-function createUnoptimizedSelector() {
-  return createSelector(
-    createAllSeriesSelector(),
-    createTagsSelector(),
-    (allSeries, allTags) => {
-      return allSeries.map((series): SuggestedSeries => {
-        const {
-          title,
-          titleSlug,
-          sortTitle,
-          images,
-          alternateTitles = [],
-          tvdbId,
-          tvMazeId,
-          imdbId,
-          tmdbId,
-          tags = [],
-        } = series;
+function useSeriesSuggestions(tagList: ReadonlyArray<Tag>) {
+  const { data: allSeries = [] } = useSeries();
 
-        return {
-          title,
-          titleSlug,
-          sortTitle,
-          images,
-          alternateTitles,
-          tvdbId,
-          tvMazeId,
-          imdbId,
-          tmdbId,
-          firstCharacter: title.charAt(0).toLowerCase(),
-          tags: tags.reduce<Tag[]>((acc, id) => {
-            const matchingTag = allTags.find((tag) => tag.id === id);
+  return useMemo(() => {
+    return allSeries.map((series): SuggestedSeries => {
+      const {
+        title,
+        titleSlug,
+        sortTitle,
+        images,
+        alternateTitles = [],
+        tvdbId,
+        tvMazeId,
+        imdbId,
+        tmdbId,
+        tags = [],
+      } = series;
 
-            if (matchingTag) {
-              acc.push(matchingTag);
-            }
+      return {
+        title,
+        titleSlug,
+        sortTitle,
+        images,
+        alternateTitles,
+        tvdbId,
+        tvMazeId,
+        imdbId,
+        tmdbId,
+        firstCharacter: title.charAt(0).toLowerCase(),
+        tags: tags.reduce<Tag[]>((acc, id) => {
+          const matchingTag = tagList.find((tag) => tag.id === id);
 
-            return acc;
-          }, []),
-        };
-      });
-    }
-  );
-}
+          if (matchingTag) {
+            acc.push(matchingTag);
+          }
 
-function createSeriesSelector() {
-  return createDeepEqualSelector(
-    createUnoptimizedSelector(),
-    (series) => series
-  );
+          return acc;
+        }, []),
+      };
+    });
+  }, [allSeries, tagList]);
 }
 
 function SeriesSearchInput() {
-  const series = useSelector(createSeriesSelector());
-  const dispatch = useDispatch();
+  const tagList = useTagList();
+  const series = useSeriesSuggestions(tagList);
+  const navigate = useNavigate();
   const { bindShortcut, unbindShortcut } = useKeyboardShortcuts();
 
   const [value, setValue] = useState('');
@@ -300,15 +288,15 @@ function SeriesSearchInput() {
         return;
       }
 
+      if (!inputRef.current?.value) {
+        return;
+      }
+
       const { highlightedSectionIndex, highlightedSuggestionIndex } =
         autosuggestRef.current.state;
 
       if (!suggestions.length || highlightedSectionIndex) {
-        dispatch(
-          push(
-            `${window.Sonarr.urlBase}/add/new?term=${encodeURIComponent(value)}`
-          )
-        );
+        navigate(`/add/new?term=${encodeURIComponent(value)}`);
 
         inputRef.current?.blur();
         reset();
@@ -324,16 +312,12 @@ function SeriesSearchInput() {
           ? suggestions[0]
           : suggestions[highlightedSuggestionIndex];
 
-      dispatch(
-        push(
-          `${window.Sonarr.urlBase}/series/${selectedSuggestion.item.titleSlug}`
-        )
-      );
+      navigate(`/series/${selectedSuggestion.item.titleSlug}`);
 
       inputRef.current?.blur();
       reset();
     },
-    [value, suggestions, dispatch, reset]
+    [value, suggestions, navigate, reset]
   );
 
   const handleBlur = useCallback(() => {
@@ -360,19 +344,13 @@ function SeriesSearchInput() {
       { suggestion }: { suggestion: SeriesSuggestion | AddNewSeriesSuggestion }
     ) => {
       if ('type' in suggestion) {
-        dispatch(
-          push(
-            `${window.Sonarr.urlBase}/add/new?term=${encodeURIComponent(value)}`
-          )
-        );
+        navigate(`/add/new?term=${encodeURIComponent(value)}`);
       } else {
         setValue('');
-        dispatch(
-          push(`${window.Sonarr.urlBase}/series/${suggestion.item.titleSlug}`)
-        );
+        navigate(`/series/${suggestion.item.titleSlug}`);
       }
     },
-    [value, dispatch]
+    [value, navigate]
   );
 
   const inputProps = {

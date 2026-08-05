@@ -167,6 +167,21 @@ namespace NzbDrone.Core.Test.ParserTests
             result.Special.Should().BeTrue();
         }
 
+        [TestCase("[Underwater] Another OVA - The Other -Karma- (BD 1080p) [3A561D0E].mkv", "Another", 0)]
+        [TestCase("[sam] Long Series - NCOP [BD 1080p FLAC] [BBC3BC68].mkv", "Long Series", 0)]
+        [TestCase("[sam] Long Series - NCED [BD 1080p FLAC] [BBC3BC68].mkv", "Long Series", 0)]
+        public void should_parse_absolute_specials_without_absolute_number(string postTitle, string title, int absoluteEpisodeNumber)
+        {
+            var result = Parser.Parser.ParseTitle(postTitle);
+            result.Should().NotBeNull();
+            result.AbsoluteEpisodeNumbers.Should().BeEmpty();
+            result.SeasonNumber.Should().Be(0);
+            result.EpisodeNumbers.Should().BeEmpty();
+            result.SeriesTitle.Should().Be(title);
+            result.FullSeason.Should().BeFalse();
+            result.Special.Should().BeTrue();
+        }
+
         [TestCase("[ANBU-AonE]_SeriesTitle_26-27_[F224EF26].avi", "SeriesTitle", 26, 27)]
         [TestCase("[Doutei] Some Good, Anime Show - 01-12 [BD][720p-AAC]", "Some Good, Anime Show", 1, 12)]
         [TestCase("Series Title (2010) - 01-02-03 - Episode Title (1) HDTV-720p", "Series Title (2010)", 1, 3)]
@@ -185,6 +200,9 @@ namespace NzbDrone.Core.Test.ParserTests
         [TestCase("[Erai-raws] Series Title! - 01 ~ 10 [1080p][Multiple Subtitle]", "Series Title!", 1, 10)]
         [TestCase("[Erai-raws] Series-Title! 2 - 01 ~ 10 [1080p][Multiple Subtitle]", "Series-Title! 2", 1, 10)]
         [TestCase("Series_Title_2_[01-05]_[AniLibria_TV]_[WEBRip_1080p]", "Series Title 2", 1, 5)]
+        [TestCase("[Moxie] One Series - The Country (892-916) (BD Remux 1080p AAC FLAC) [Dual Audio]", "One Series - The Country", 892, 916)]
+        [TestCase("[HatSubs] One Series (1017-1088) (WEB 1080p)", "One Series", 1017, 1088)]
+        [TestCase("[HatSubs] One Series 1017-1088 (WEB 1080p)", "One Series", 1017, 1088)]
 
         // [TestCase("", "", 1, 2)]
         public void should_parse_multi_episode_absolute_numbers(string postTitle, string title, int firstAbsoluteEpisodeNumber, int lastAbsoluteEpisodeNumber)

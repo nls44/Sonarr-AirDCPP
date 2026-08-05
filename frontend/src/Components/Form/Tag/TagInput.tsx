@@ -14,7 +14,7 @@ import {
   RenderSuggestion,
   SuggestionsFetchRequestedParams,
 } from 'react-autosuggest';
-import useDebouncedCallback from 'Helpers/Hooks/useDebouncedCallback';
+import { useDebouncedCallback } from 'use-debounce';
 import { Kind } from 'Helpers/Props/kinds';
 import { InputChanged } from 'typings/inputs';
 import AutoSuggestInput from '../AutoSuggestInput';
@@ -65,7 +65,7 @@ export interface TagInputProps<T extends TagBase> {
   inputContainerClassName?: string;
   name: string;
   tags: T[];
-  tagList: T[];
+  tagList: ReadonlyArray<T>;
   allowNew?: boolean;
   kind?: Kind;
   placeholder?: string;

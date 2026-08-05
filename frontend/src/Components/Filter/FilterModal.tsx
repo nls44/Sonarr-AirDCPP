@@ -1,16 +1,17 @@
 import React, { useCallback, useState } from 'react';
-import { CustomFilter, FilterBuilderProp } from 'App/State/AppState';
 import Modal from 'Components/Modal/Modal';
+import { CustomFilter, FilterBuilderProp } from 'Filters/Filter';
 import FilterBuilderModalContent from './Builder/FilterBuilderModalContent';
 import CustomFiltersModalContent from './CustomFilters/CustomFiltersModalContent';
+import { SetFilter } from './Filter';
 
 export interface FilterModalProps<T> {
   isOpen: boolean;
   customFilters: CustomFilter[];
   customFilterType: string;
   filterBuilderProps: FilterBuilderProp<T>[];
-  sectionItems: T[];
-  dispatchSetFilter: (payload: { selectedFilterKey: string | number }) => void;
+  sectionItems: ReadonlyArray<T>;
+  dispatchSetFilter: (payload: SetFilter) => void;
   onModalClose: () => void;
 }
 

@@ -21,7 +21,13 @@ runs:
   using: "composite"
   steps:
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
+
+    - name: Setup NuGet registry source
+      shell: bash
+      if: ${{ startsWith(inputs.runtime, 'freebsd') }}
+      run:
+        dotnet nuget add source --configfile src/NuGet.Config --name gh-openur https://nuget.pkg.github.com/openur/index.json --username ${{ github.repository_owner }} --password ${{ github.token }} --store-password-in-clear-text
 
     - name: Setup Environment Variables
       id: variables
@@ -86,7 +92,7 @@ runs:
 
         echo "Building Sonarr for $runtime, Platform: $platform"
 
-        dotnet msbuild -restore $slnFile -p:SelfContained=True -p:Configuration=Release -p:Platform=$platform -p:RuntimeIdentifiers=$runtime -p:EnableWindowsTargeting=true -t:PublishAllRids
+        dotnet msbuild -restore $slnFile -p:SelfContained=true -p:Configuration=Release -p:Platform=$platform -p:RuntimeIdentifiers=$runtime -p:EnableWindowsTargeting=true -t:PublishAllRids
 
     - name: Package
       shell: bash
@@ -116,8 +122,8 @@ runs:
 
             echo "Adding Sonarr.Mono to UpdatePackage"
             cp $folder/Sonarr.Mono.* $folder/Sonarr.Update
-            cp $folder/Mono.Posix.NETStandard.* $folder/Sonarr.Update
-            cp $folder/libMonoPosixHelper.* $folder/Sonarr.Update
+            cp $folder/Openur.Mono.Unix.* $folder/Sonarr.Update
+            cp $folder/libMono.Unix.* $folder/Sonarr.Update
             ;;
           win)
             folder=_artifacts/$runtime/$framework/Sonarr
@@ -132,8 +138,8 @@ runs:
 
             echo "Removing Sonarr.Mono"
             rm -f $folder/Sonarr.Mono.*
-            rm -f $folder/Mono.Posix.NETStandard.*
-            rm -f $folder/libMonoPosixHelper.*
+            rm -f $folder/Openur.Mono.Unix.*
+            rm -f $folder/libMono.Unix.*
 
             echo "Adding Sonarr.Windows to UpdatePackage"
             cp $folder/Sonarr.Windows.* $folder/Sonarr.Update
@@ -158,8 +164,8 @@ runs:
 
             echo "Adding Sonarr.Mono to UpdatePackage"
             cp $folder/Sonarr.Mono.* $folder/Sonarr.Update
-            cp $folder/Mono.Posix.NETStandard.* $folder/Sonarr.Update
-            cp $folder/libMonoPosixHelper.* $folder/Sonarr.Update
+            cp $folder/Openur.Mono.Unix.* $folder/Sonarr.Update
+            cp $folder/libMono.Unix.* $folder/Sonarr.Update
             ;;
         esac
 
@@ -182,7 +188,7 @@ runs:
         runtime: ${{ inputs.runtime }}
 
     - name: Upload Artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: build-${{ inputs.runtime }}
         path: _artifacts/**/*

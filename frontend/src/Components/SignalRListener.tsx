@@ -3,24 +3,21 @@ import {
   HubConnectionBuilder,
   LogLevel,
 } from '@microsoft/signalr';
+import { QueryKey, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { setAppValue, setVersion } from 'App/appStore';
 import ModelBase from 'App/ModelBase';
-import AppState from 'App/State/AppState';
 import Command from 'Commands/Command';
-import { setAppValue, setVersion } from 'Store/Actions/appActions';
-import { removeItem, update, updateItem } from 'Store/Actions/baseActions';
-import {
-  fetchCommands,
-  finishCommand,
-  updateCommand,
-} from 'Store/Actions/commandActions';
-import { fetchQueue, fetchQueueDetails } from 'Store/Actions/queueActions';
-import { fetchRootFolders } from 'Store/Actions/rootFolderActions';
-import { fetchSeries } from 'Store/Actions/seriesActions';
-import { fetchQualityDefinitions } from 'Store/Actions/settingsActions';
-import { fetchHealth } from 'Store/Actions/systemActions';
-import { fetchTagDetails, fetchTags } from 'Store/Actions/tagActions';
+import { useUpdateCommand } from 'Commands/useCommands';
+import Episode from 'Episode/Episode';
+import { EpisodeFile } from 'EpisodeFile/EpisodeFile';
+import { PagedQueryResponse } from 'Helpers/Hooks/usePagedApiQuery';
+import Series from 'Series/Series';
+import { DownloadClientModel } from 'Settings/DownloadClients/DownloadClients/useDownloadClients';
+import { ImportListModel } from 'Settings/ImportLists/ImportLists/useImportLists';
+import { IndexerModel } from 'Settings/Indexers/useIndexers';
+import { MetadataModel } from 'Settings/Metadata/useMetadata';
+import { NotificationModel } from 'Settings/Notifications/useConnections';
 import { repopulatePage } from 'Utilities/pagePopulator';
 import SignalRLogger from 'Utilities/SignalRLogger';
 
@@ -33,62 +30,54 @@ interface SignalRMessage {
     resource: ModelBase;
     version: string;
   };
+  version: number | undefined;
 }
 
 function SignalRListener() {
-  const dispatch = useDispatch();
-
-  const isQueuePopulated = useSelector(
-    (state: AppState) => state.queue.paged.isPopulated
-  );
-
+  const queryClient = useQueryClient();
+  const updateCommand = useUpdateCommand();
   const connection = useRef<HubConnection | null>(null);
 
   const handleStartFail = useRef((error: unknown) => {
     console.error('[signalR] failed to connect');
     console.error(error);
 
-    dispatch(
-      setAppValue({
-        isConnected: false,
-        isReconnecting: false,
-        isDisconnected: false,
-        isRestarting: false,
-      })
-    );
+    setAppValue({
+      isConnected: false,
+      isReconnecting: false,
+      isDisconnected: false,
+      isRestarting: false,
+    });
   });
 
   const handleStart = useRef(() => {
     console.debug('[signalR] connected');
 
-    dispatch(
-      setAppValue({
-        isConnected: true,
-        isReconnecting: false,
-        isDisconnected: false,
-        isRestarting: false,
-      })
-    );
+    setAppValue({
+      isConnected: true,
+      isReconnecting: false,
+      isDisconnected: false,
+      isRestarting: false,
+    });
   });
 
   const handleReconnecting = useRef(() => {
-    dispatch(setAppValue({ isReconnecting: true }));
+    setAppValue({ isReconnecting: true });
   });
 
   const handleReconnected = useRef(() => {
-    dispatch(
-      setAppValue({
-        isConnected: true,
-        isReconnecting: false,
-        isDisconnected: false,
-        isRestarting: false,
-      })
-    );
+    setAppValue({
+      isConnected: true,
+      isReconnecting: false,
+      isDisconnected: false,
+      isRestarting: false,
+    });
 
     // Repopulate the page (if a repopulator is set) to ensure things
     // are in sync after reconnecting.
-    dispatch(fetchSeries());
-    dispatch(fetchCommands());
+    queryClient.invalidateQueries({ queryKey: ['/series'] });
+    queryClient.invalidateQueries({ queryKey: ['/command'] });
+
     repopulatePage();
   });
 
@@ -97,51 +86,57 @@ function SignalRListener() {
   });
 
   const handleReceiveMessage = useRef((message: SignalRMessage) => {
-    console.debug('[signalR] received', message.name, message.body);
+    console.debug(
+      `[signalR] received ${message.name}${
+        message.version ? ` v${message.version}` : ''
+      }`,
+      message.body
+    );
 
-    const { name, body } = message;
+    const { name, body, version = 0 } = message;
+
+    if (version < 5) {
+      return;
+    }
 
     if (name === 'calendar') {
       if (body.action === 'updated') {
-        dispatch(
-          updateItem({
-            section: 'calendar',
-            updateOnly: true,
-            ...body.resource,
-          })
-        );
+        const updatedItem = body.resource as Episode;
+        updateQueryClientItem(queryClient, ['/calendar'], updatedItem, true);
+
         return;
       }
     }
 
     if (name === 'command') {
       if (body.action === 'sync') {
-        dispatch(fetchCommands());
+        queryClient.invalidateQueries({ queryKey: ['/command'] });
         return;
       }
 
       const resource = body.resource as Command;
-      const status = resource.status;
 
-      // Both successful and failed commands need to be
-      // completed, otherwise they spin until they time out.
-
-      if (status === 'completed' || status === 'failed') {
-        dispatch(finishCommand(resource));
-      } else {
-        dispatch(updateCommand(resource));
-      }
+      updateCommand(resource);
 
       return;
     }
 
     if (name === 'downloadclient') {
-      const section = 'settings.downloadClients';
+      const updatedItem = body.resource as DownloadClientModel;
 
       if (body.action === 'created' || body.action === 'updated') {
-        dispatch(updateItem({ section, ...body.resource }));
+        updateQueryClientItem(
+          queryClient,
+          ['/downloadclient'],
+          updatedItem,
+          true
+        );
       } else if (body.action === 'deleted') {
-        dispatch(removeItem({ section, id: body.resource.id }));
+        removeQueryClientItem(
+          queryClient,
+          ['/downloadclient'],
+          body.resource.id
+        );
       }
 
       return;
@@ -149,29 +144,26 @@ function SignalRListener() {
 
     if (name === 'episode') {
       if (body.action === 'updated') {
-        dispatch(
-          updateItem({
-            section: 'episodes',
-            updateOnly: true,
-            ...body.resource,
-          })
-        );
+        const updatedItem = body.resource as Episode;
+
+        updateQueryClientItem(queryClient, ['/episode'], updatedItem, false);
       }
 
       return;
     }
 
     if (name === 'episodefile') {
-      const section = 'episodeFiles';
-
       if (body.action === 'updated') {
-        dispatch(updateItem({ section, ...body.resource }));
+        const updatedItem = body.resource as EpisodeFile;
+
+        updateQueryClientItem(queryClient, ['/episodeFile'], updatedItem, true);
 
         // Repopulate the page to handle recently imported file
         repopulatePage('episodeFileUpdated');
       } else if (body.action === 'deleted') {
-        dispatch(removeItem({ section, id: body.resource.id }));
+        const id = body.resource.id;
 
+        removeQueryClientItem(queryClient, ['/episodeFile'], id);
         repopulatePage('episodeFileDeleted');
       }
 
@@ -179,140 +171,153 @@ function SignalRListener() {
     }
 
     if (name === 'health') {
-      dispatch(fetchHealth());
+      queryClient.invalidateQueries({ queryKey: ['/health'] });
       return;
     }
 
     if (name === 'importlist') {
-      const section = 'settings.importLists';
+      const updatedItem = body.resource as ImportListModel;
 
       if (body.action === 'created' || body.action === 'updated') {
-        dispatch(updateItem({ section, ...body.resource }));
+        updateQueryClientItem(queryClient, ['/importlist'], updatedItem, true);
       } else if (body.action === 'deleted') {
-        dispatch(removeItem({ section, id: body.resource.id }));
+        removeQueryClientItem(queryClient, ['/importlist'], body.resource.id);
       }
 
       return;
     }
 
     if (name === 'indexer') {
-      const section = 'settings.indexers';
+      const updatedItem = body.resource as IndexerModel;
 
       if (body.action === 'created' || body.action === 'updated') {
-        dispatch(updateItem({ section, ...body.resource }));
+        updateQueryClientItem(queryClient, ['/indexer'], updatedItem, true);
       } else if (body.action === 'deleted') {
-        dispatch(removeItem({ section, id: body.resource.id }));
+        removeQueryClientItem(queryClient, ['/indexer'], body.resource.id);
       }
 
       return;
     }
 
     if (name === 'metadata') {
-      const section = 'settings.metadata';
+      const updatedItem = body.resource as MetadataModel;
 
       if (body.action === 'updated') {
-        dispatch(updateItem({ section, ...body.resource }));
+        updateQueryClientItem(queryClient, ['/metadata'], updatedItem, false);
       }
 
       return;
     }
 
-    if (name === 'notification') {
-      const section = 'settings.notifications';
+    if (name === 'connection') {
+      const updatedItem = body.resource as NotificationModel;
 
       if (body.action === 'created' || body.action === 'updated') {
-        dispatch(updateItem({ section, ...body.resource }));
+        updateQueryClientItem(
+          queryClient,
+          ['/connection'],
+          updatedItem,
+          body.action === 'created'
+        );
       } else if (body.action === 'deleted') {
-        dispatch(removeItem({ section, id: body.resource.id }));
+        removeQueryClientItem(queryClient, ['/connection'], body.resource.id);
       }
 
       return;
     }
 
     if (name === 'qualitydefinition') {
-      dispatch(fetchQualityDefinitions());
+      queryClient.invalidateQueries({ queryKey: ['/qualitydefinition'] });
       return;
     }
 
     if (name === 'queue') {
-      if (isQueuePopulated) {
-        dispatch(fetchQueue());
-      }
-
+      queryClient.invalidateQueries({ queryKey: ['/queue'] });
       return;
     }
 
     if (name === 'queue/details') {
-      dispatch(fetchQueueDetails());
+      queryClient.invalidateQueries({ queryKey: ['/queue/details'] });
       return;
     }
 
     if (name === 'queue/status') {
-      dispatch(update({ section: 'queue.status', data: body.resource }));
+      const statusDetails = queryClient.getQueriesData({
+        queryKey: ['/queue/status'],
+      });
+
+      statusDetails.forEach(([queryKey]) => {
+        queryClient.setQueryData(queryKey, () => body.resource);
+      });
+
       return;
     }
 
     if (name === 'rootfolder') {
-      dispatch(fetchRootFolders());
+      queryClient.invalidateQueries({ queryKey: ['/rootFolder'] });
 
       return;
     }
 
     if (name === 'series') {
       if (body.action === 'updated') {
-        dispatch(updateItem({ section: 'series', ...body.resource }));
+        const updatedItem = body.resource as Series;
+
+        updateQueryClientItem(queryClient, ['/series'], updatedItem, true);
 
         repopulatePage('seriesUpdated');
       } else if (body.action === 'deleted') {
-        dispatch(removeItem({ section: 'series', id: body.resource.id }));
+        removeQueryClientItem(queryClient, ['/series'], body.resource.id);
       }
 
       return;
     }
 
     if (name === 'system/task') {
-      dispatch(fetchCommands());
+      queryClient.invalidateQueries({ queryKey: ['/system/task'] });
       return;
     }
 
     if (name === 'tag') {
-      if (body.action === 'sync') {
-        dispatch(fetchTags());
-        dispatch(fetchTagDetails());
+      if (body.action !== 'sync') {
+        return;
       }
+
+      queryClient.invalidateQueries({ queryKey: ['/tag'] });
+      queryClient.invalidateQueries({ queryKey: ['/tag/detail'] });
 
       return;
     }
 
     if (name === 'version') {
-      dispatch(setVersion({ version: body.version }));
+      setVersion({ version: body.version });
       return;
     }
 
     if (name === 'wanted/cutoff') {
-      if (body.action === 'updated') {
-        dispatch(
-          updateItem({
-            section: 'wanted.cutoffUnmet',
-            updateOnly: true,
-            ...body.resource,
-          })
-        );
+      if (body.action !== 'updated') {
+        return;
       }
+
+      updatePagedItem<Episode>(
+        queryClient,
+        ['/wanted/cutoff'],
+        body.resource as Episode
+      );
 
       return;
     }
 
     if (name === 'wanted/missing') {
-      if (body.action === 'updated') {
-        dispatch(
-          updateItem({
-            section: 'wanted.missing',
-            updateOnly: true,
-            ...body.resource,
-          })
-        );
+      if (body.action !== 'updated') {
+        return;
       }
+
+      updatePagedItem<Episode>(
+        queryClient,
+        ['/wanted/missing'],
+        body.resource as Episode
+      );
 
       return;
     }
@@ -333,8 +338,9 @@ function SignalRListener() {
       .withAutomaticReconnect({
         nextRetryDelayInMilliseconds: (retryContext) => {
           if (retryContext.elapsedMilliseconds > 180000) {
-            dispatch(setAppValue({ isDisconnected: true }));
+            setAppValue({ isDisconnected: true });
           }
+
           return Math.min(retryContext.previousRetryCount, 10) * 1000;
         },
       })
@@ -354,9 +360,90 @@ function SignalRListener() {
       connection.current?.stop();
       connection.current = null;
     };
-  }, [dispatch]);
+  }, []);
 
   return null;
 }
 
 export default SignalRListener;
+
+const updatePagedItem = <T extends ModelBase>(
+  queryClient: ReturnType<typeof useQueryClient>,
+  queryKey: QueryKey,
+  updatedItem: T
+) => {
+  queryClient.setQueriesData(
+    { queryKey },
+    (oldData: PagedQueryResponse<T> | undefined) => {
+      if (!oldData) {
+        return oldData;
+      }
+
+      const itemIndex = oldData.records.findIndex(
+        (item) => item.id === updatedItem.id
+      );
+
+      if (itemIndex === -1) {
+        return oldData;
+      }
+
+      return {
+        ...oldData,
+        records: oldData.records.map((item) => {
+          if (item.id === updatedItem.id) {
+            return updatedItem;
+          }
+
+          return item;
+        }),
+      };
+    }
+  );
+};
+
+const updateQueryClientItem = <T extends ModelBase>(
+  queryClient: ReturnType<typeof useQueryClient>,
+  queryKey: QueryKey,
+  updatedItem: T,
+  addMissing: boolean
+) => {
+  queryClient.setQueriesData({ queryKey }, (oldData: T[] | undefined) => {
+    if (!oldData) {
+      return oldData;
+    }
+
+    const itemIndex = oldData.findIndex((item) => item.id === updatedItem.id);
+
+    if (itemIndex === -1 && addMissing) {
+      return [...oldData, updatedItem];
+    }
+
+    return oldData.map((item) => {
+      if (item.id === updatedItem.id) {
+        return updatedItem;
+      }
+
+      return item;
+    });
+  });
+};
+
+const removeQueryClientItem = <T extends ModelBase>(
+  queryClient: ReturnType<typeof useQueryClient>,
+  queryKey: QueryKey,
+  id: T['id']
+) => {
+  queryClient.setQueriesData({ queryKey }, (oldData: T[] | undefined) => {
+    if (!oldData) {
+      return oldData;
+    }
+
+    const itemIndex = oldData.findIndex((item) => item.id === id);
+
+    if (itemIndex === -1) {
+      return oldData;
+    }
+
+    return oldData.filter((item) => item.id !== id);
+  });
+};

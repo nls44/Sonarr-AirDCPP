@@ -4,22 +4,22 @@ import FormGroup from 'Components/Form/FormGroup';
 import FormInputGroup from 'Components/Form/FormInputGroup';
 import FormLabel from 'Components/Form/FormLabel';
 import { EnhancedSelectInputValue } from 'Components/Form/Select/EnhancedSelectInput';
-import useShowAdvancedSettings from 'Helpers/Hooks/useShowAdvancedSettings';
 import { inputTypes, sizes } from 'Helpers/Props';
-import useSystemStatus from 'System/useSystemStatus';
+import { useShowAdvancedSettings } from 'Settings/advancedSettingsStore';
+import { useSystemStatusData } from 'System/Status/useSystemStatus';
 import { InputChanged } from 'typings/inputs';
 import { PendingSection } from 'typings/pending';
-import General from 'typings/Settings/General';
 import titleCase from 'Utilities/String/titleCase';
 import translate from 'Utilities/String/translate';
+import { GeneralSettingsModel } from './useGeneralSettings';
 
 const branchValues = ['main', 'develop'];
 
 interface UpdateSettingsProps {
-  branch: PendingSection<General>['branch'];
-  updateAutomatically: PendingSection<General>['updateAutomatically'];
-  updateMechanism: PendingSection<General>['updateMechanism'];
-  updateScriptPath: PendingSection<General>['updateScriptPath'];
+  branch: PendingSection<GeneralSettingsModel>['branch'];
+  updateAutomatically: PendingSection<GeneralSettingsModel>['updateAutomatically'];
+  updateMechanism: PendingSection<GeneralSettingsModel>['updateMechanism'];
+  updateScriptPath: PendingSection<GeneralSettingsModel>['updateScriptPath'];
   onInputChange: (change: InputChanged) => void;
 }
 
@@ -31,7 +31,7 @@ function UpdateSettings({
   onInputChange,
 }: UpdateSettingsProps) {
   const showAdvancedSettings = useShowAdvancedSettings();
-  const { packageUpdateMechanism } = useSystemStatus();
+  const { packageUpdateMechanism } = useSystemStatusData();
 
   if (!showAdvancedSettings) {
     return null;

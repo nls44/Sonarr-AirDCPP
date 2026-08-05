@@ -1,33 +1,21 @@
 import classNames from 'classnames';
-import moment from 'moment';
 import React, { useCallback, useMemo, useState } from 'react';
-import { useSelector } from 'react-redux';
-import { createSelector } from 'reselect';
-import AppState from 'App/State/AppState';
+import { useIsDownloadingEpisodes } from 'Activity/Queue/Details/QueueDetailsProvider';
+import { useCalendarOptions } from 'Calendar/calendarOptionsStore';
 import getStatusStyle from 'Calendar/getStatusStyle';
 import Icon from 'Components/Icon';
 import Link from 'Components/Link/Link';
 import getFinaleTypeName from 'Episode/getFinaleTypeName';
 import { icons, kinds } from 'Helpers/Props';
-import useSeries from 'Series/useSeries';
-import createUISettingsSelector from 'Store/Selectors/createUISettingsSelector';
+import { useSingleSeries } from 'Series/useSeries';
+import { useUiSettingsValues } from 'Settings/UI/useUiSettings';
 import { CalendarItem } from 'typings/Calendar';
+import { convertToTimezone } from 'Utilities/Date/convertToTimezone';
 import formatTime from 'Utilities/Date/formatTime';
 import padNumber from 'Utilities/Number/padNumber';
 import translate from 'Utilities/String/translate';
 import CalendarEvent from './CalendarEvent';
 import styles from './CalendarEventGroup.css';
-
-function createIsDownloadingSelector(episodeIds: number[]) {
-  return createSelector(
-    (state: AppState) => state.queue.details,
-    (details) => {
-      return details.items.some((item) => {
-        return !!(item.episodeId && episodeIds.includes(item.episodeId));
-      });
-    }
-  );
-}
 
 interface CalendarEventGroupProps {
   episodeIds: number[];
@@ -42,29 +30,31 @@ function CalendarEventGroup({
   events,
   onEventModalOpenToggle,
 }: CalendarEventGroupProps) {
-  const isDownloading = useSelector(createIsDownloadingSelector(episodeIds));
-  const series = useSeries(seriesId)!;
+  const isDownloading = useIsDownloadingEpisodes(episodeIds);
+  const series = useSingleSeries(seriesId)!;
 
-  const { timeFormat, enableColorImpairedMode } = useSelector(
-    createUISettingsSelector()
-  );
+  const { timeFormat, enableColorImpairedMode, timeZone } =
+    useUiSettingsValues();
 
   const { showEpisodeInformation, showFinaleIcon, fullColorEvents } =
-    useSelector((state: AppState) => state.calendar.options);
+    useCalendarOptions();
 
   const [isExpanded, setIsExpanded] = useState(false);
 
   const firstEpisode = events[0];
   const lastEpisode = events[events.length - 1];
   const airDateUtc = firstEpisode.airDateUtc;
-  const startTime = moment(airDateUtc);
-  const endTime = moment(lastEpisode.airDateUtc).add(series.runtime, 'minutes');
+  const startTime = convertToTimezone(airDateUtc, timeZone);
+  const endTime = convertToTimezone(lastEpisode.airDateUtc, timeZone).add(
+    series.runtime,
+    'minutes'
+  );
   const seasonNumber = firstEpisode.seasonNumber;
 
-  const { allDownloaded, anyQueued, anyMonitored, allAbsoluteEpisodeNumbers } =
+  const { allDownloaded, anyGrabbed, anyMonitored, allAbsoluteEpisodeNumbers } =
     useMemo(() => {
       let files = 0;
-      let queued = 0;
+      let grabbed = 0;
       let monitored = 0;
       let absoluteEpisodeNumbers = 0;
 
@@ -73,8 +63,8 @@ function CalendarEventGroup({
           files++;
         }
 
-        if (event.queued) {
-          queued++;
+        if (event.grabbed) {
+          grabbed++;
         }
 
         if (series.monitored && event.monitored) {
@@ -88,13 +78,13 @@ function CalendarEventGroup({
 
       return {
         allDownloaded: files === events.length,
-        anyQueued: queued > 0,
+        anyGrabbed: grabbed > 0,
         anyMonitored: monitored > 0,
         allAbsoluteEpisodeNumbers: absoluteEpisodeNumbers === events.length,
       };
     }, [series, events]);
 
-  const anyDownloading = isDownloading || anyQueued;
+  const anyDownloading = isDownloading || anyGrabbed;
 
   const statusStyle = getStatusStyle(
     allDownloaded,
@@ -205,9 +195,10 @@ function CalendarEventGroup({
 
       <div className={styles.airingInfo}>
         <div className={styles.airTime}>
-          {formatTime(airDateUtc, timeFormat)} -{' '}
+          {formatTime(airDateUtc, timeFormat, { timeZone })} -{' '}
           {formatTime(endTime.toISOString(), timeFormat, {
             includeMinuteZero: true,
+            timeZone,
           })}
         </div>
 

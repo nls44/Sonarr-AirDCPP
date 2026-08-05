@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import * as commandNames from 'Commands/commandNames';
+import CommandNames from 'Commands/CommandNames';
+import { useCommandExecuting, useExecuteCommand } from 'Commands/useCommands';
 import Alert from 'Components/Alert';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import FilterMenu from 'Components/Menu/FilterMenu';
@@ -14,33 +14,39 @@ import TableBody from 'Components/Table/TableBody';
 import TableOptionsModalWrapper from 'Components/Table/TableOptions/TableOptionsModalWrapper';
 import TablePager from 'Components/Table/TablePager';
 import { align, icons, kinds } from 'Helpers/Props';
-import { executeCommand } from 'Store/Actions/commandActions';
-import createCommandExecutingSelector from 'Store/Selectors/createCommandExecutingSelector';
+import { SortDirection } from 'Helpers/Props/sortDirections';
 import { TableOptionsChangePayload } from 'typings/Table';
 import translate from 'Utilities/String/translate';
 import {
   setEventOption,
   setEventOptions,
+  setEventSort,
   useEventOptions,
 } from './eventOptionsStore';
 import LogsTableRow from './LogsTableRow';
 import useEvents, { useFilters } from './useEvents';
 
 function LogsTable() {
-  const dispatch = useDispatch();
-  const { data, error, isFetching, isFetched, isLoading, page, goToPage } =
-    useEvents();
-
-  const { records = [], totalPages = 0, totalRecords } = data ?? {};
+  const executeCommand = useExecuteCommand();
+  const {
+    records,
+    totalPages,
+    totalRecords,
+    error,
+    isFetching,
+    isFetched,
+    isLoading,
+    page,
+    goToPage,
+    refetch,
+  } = useEvents();
 
   const { columns, pageSize, sortKey, sortDirection, selectedFilterKey } =
     useEventOptions();
 
   const filters = useFilters();
 
-  const isClearLogExecuting = useSelector(
-    createCommandExecutingSelector(commandNames.CLEAR_LOGS)
-  );
+  const isClearLogExecuting = useCommandExecuting(CommandNames.ClearLog);
 
   const handleFilterSelect = useCallback(
     (selectedFilterKey: string | number) => {
@@ -49,9 +55,15 @@ function LogsTable() {
     []
   );
 
-  const handleSortPress = useCallback((sortKey: string) => {
-    setEventOption('sortKey', sortKey);
-  }, []);
+  const handleSortPress = useCallback(
+    (sortKey: string, sortDirection?: SortDirection) => {
+      setEventSort({
+        sortKey,
+        sortDirection,
+      });
+    },
+    []
+  );
 
   const handleTableOptionChange = useCallback(
     (payload: TableOptionsChangePayload) => {
@@ -66,18 +78,15 @@ function LogsTable() {
 
   const handleRefreshPress = useCallback(() => {
     goToPage(1);
-  }, [goToPage]);
+    refetch();
+  }, [goToPage, refetch]);
 
   const handleClearLogsPress = useCallback(() => {
-    dispatch(
-      executeCommand({
-        name: commandNames.CLEAR_LOGS,
-        commandFinished: () => {
-          goToPage(1);
-        },
-      })
-    );
-  }, [dispatch, goToPage]);
+    executeCommand({ name: CommandNames.ClearLog }, () => {
+      goToPage(1);
+      refetch();
+    });
+  }, [executeCommand, goToPage, refetch]);
 
   return (
     <PageContent title={translate('Logs')}>

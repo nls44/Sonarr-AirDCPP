@@ -3,25 +3,26 @@ import FieldSet from 'Components/FieldSet';
 import FormGroup from 'Components/Form/FormGroup';
 import FormInputGroup from 'Components/Form/FormInputGroup';
 import FormLabel from 'Components/Form/FormLabel';
-import useShowAdvancedSettings from 'Helpers/Hooks/useShowAdvancedSettings';
 import { inputTypes, sizes } from 'Helpers/Props';
-import useIsWindowsService from 'System/useIsWindowsService';
+import { useShowAdvancedSettings } from 'Settings/advancedSettingsStore';
+import { useIsWindowsService } from 'System/Status/useSystemStatus';
 import { InputChanged } from 'typings/inputs';
 import { PendingSection } from 'typings/pending';
-import General from 'typings/Settings/General';
 import translate from 'Utilities/String/translate';
+import { GeneralSettingsModel } from './useGeneralSettings';
 
 interface HostSettingsProps {
-  bindAddress: PendingSection<General>['bindAddress'];
-  port: PendingSection<General>['port'];
-  urlBase: PendingSection<General>['urlBase'];
-  instanceName: PendingSection<General>['instanceName'];
-  applicationUrl: PendingSection<General>['applicationUrl'];
-  enableSsl: PendingSection<General>['enableSsl'];
-  sslPort: PendingSection<General>['sslPort'];
-  sslCertPath: PendingSection<General>['sslCertPath'];
-  sslCertPassword: PendingSection<General>['sslCertPassword'];
-  launchBrowser: PendingSection<General>['launchBrowser'];
+  bindAddress: PendingSection<GeneralSettingsModel>['bindAddress'];
+  port: PendingSection<GeneralSettingsModel>['port'];
+  urlBase: PendingSection<GeneralSettingsModel>['urlBase'];
+  instanceName: PendingSection<GeneralSettingsModel>['instanceName'];
+  applicationUrl: PendingSection<GeneralSettingsModel>['applicationUrl'];
+  enableSsl: PendingSection<GeneralSettingsModel>['enableSsl'];
+  sslPort: PendingSection<GeneralSettingsModel>['sslPort'];
+  sslKeyPath: PendingSection<GeneralSettingsModel>['sslKeyPath'];
+  sslCertPath: PendingSection<GeneralSettingsModel>['sslCertPath'];
+  sslCertPassword: PendingSection<GeneralSettingsModel>['sslCertPassword'];
+  launchBrowser: PendingSection<GeneralSettingsModel>['launchBrowser'];
   onInputChange: (change: InputChanged) => void;
 }
 
@@ -34,6 +35,7 @@ function HostSettings({
   enableSsl,
   sslPort,
   sslCertPath,
+  sslKeyPath,
   sslCertPassword,
   launchBrowser,
   onInputChange,
@@ -142,36 +144,49 @@ function HostSettings({
       ) : null}
 
       {enableSsl.value ? (
-        <FormGroup advancedSettings={showAdvancedSettings} isAdvanced={true}>
-          <FormLabel>{translate('SslCertPath')}</FormLabel>
+        <>
+          <FormGroup advancedSettings={showAdvancedSettings} isAdvanced={true}>
+            <FormLabel>{translate('SslCertPath')}</FormLabel>
 
-          <FormInputGroup
-            type={inputTypes.TEXT}
-            name="sslCertPath"
-            helpText={translate('SslCertPathHelpText')}
-            helpTextWarning={translate('RestartRequiredHelpTextWarning')}
-            onChange={onInputChange}
-            {...sslCertPath}
-          />
-        </FormGroup>
+            <FormInputGroup
+              type={inputTypes.TEXT}
+              name="sslCertPath"
+              helpText={translate('SslCertPathHelpText')}
+              helpTextWarning={translate('RestartRequiredHelpTextWarning')}
+              onChange={onInputChange}
+              {...sslCertPath}
+            />
+          </FormGroup>
+
+          <FormGroup advancedSettings={showAdvancedSettings} isAdvanced={true}>
+            <FormLabel>{translate('SslKeyPath')}</FormLabel>
+
+            <FormInputGroup
+              type={inputTypes.TEXT}
+              name="sslKeyPath"
+              helpText={translate('SslKeyPathHelpText')}
+              helpTextWarning={translate('RestartRequiredHelpTextWarning')}
+              onChange={onInputChange}
+              {...sslKeyPath}
+            />
+          </FormGroup>
+
+          <FormGroup advancedSettings={showAdvancedSettings} isAdvanced={true}>
+            <FormLabel>{translate('SslCertPassword')}</FormLabel>
+
+            <FormInputGroup
+              type={inputTypes.PASSWORD}
+              name="sslCertPassword"
+              helpText={translate('SslCertPasswordHelpText')}
+              helpTextWarning={translate('RestartRequiredHelpTextWarning')}
+              onChange={onInputChange}
+              {...sslCertPassword}
+            />
+          </FormGroup>
+        </>
       ) : null}
 
-      {enableSsl.value ? (
-        <FormGroup advancedSettings={showAdvancedSettings} isAdvanced={true}>
-          <FormLabel>{translate('SslCertPassword')}</FormLabel>
-
-          <FormInputGroup
-            type={inputTypes.PASSWORD}
-            name="sslCertPassword"
-            helpText={translate('SslCertPasswordHelpText')}
-            helpTextWarning={translate('RestartRequiredHelpTextWarning')}
-            onChange={onInputChange}
-            {...sslCertPassword}
-          />
-        </FormGroup>
-      ) : null}
-
-      {isWindowsService ? (
+      {isWindowsService ? null : (
         <FormGroup size={sizes.MEDIUM}>
           <FormLabel>{translate('OpenBrowserOnStart')}</FormLabel>
 
@@ -183,7 +198,7 @@ function HostSettings({
             {...launchBrowser}
           />
         </FormGroup>
-      ) : null}
+      )}
     </FieldSet>
   );
 }

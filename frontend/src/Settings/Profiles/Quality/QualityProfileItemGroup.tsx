@@ -8,12 +8,13 @@ import Label from 'Components/Label';
 import IconButton from 'Components/Link/IconButton';
 import { icons } from 'Helpers/Props';
 import { InputChanged } from 'typings/inputs';
-import { QualityProfileQualityItem } from 'typings/QualityProfile';
 import translate from 'Utilities/String/translate';
 import QualityProfileItemDragSource, {
   DragMoveState,
 } from './QualityProfileItemDragSource';
+import { getItemFailures, ItemFailuresMap } from './qualityProfileItemFailures';
 import { SizeChanged } from './QualityProfileItemSize';
+import { QualityProfileQualityItem } from './useQualityProfiles';
 import styles from './QualityProfileItemGroup.css';
 
 interface QualityProfileItemGroupProps {
@@ -24,6 +25,7 @@ interface QualityProfileItemGroupProps {
   allowed: boolean;
   items: QualityProfileQualityItem[];
   qualityIndex: string;
+  itemFailures?: ItemFailuresMap;
   isDragging: boolean;
   isDraggingUp: boolean;
   isDraggingDown: boolean;
@@ -44,6 +46,7 @@ function QualityProfileItemGroup({
   allowed,
   items,
   qualityIndex,
+  itemFailures,
   isDragging,
   isDraggingUp,
   isDraggingDown,
@@ -55,6 +58,7 @@ function QualityProfileItemGroup({
   onDragEnd,
   onSizeChange,
 }: QualityProfileItemGroupProps) {
+  const groupBaseIndex = parseInt(qualityIndex) - 1;
   const handleAllowedChange = useCallback(
     ({ value }: InputChanged<boolean>) => {
       onGroupAllowedChange?.(groupId, value);
@@ -89,6 +93,7 @@ function QualityProfileItemGroup({
               className={styles.deleteGroupButton}
               name={icons.UNGROUP}
               title={translate('Ungroup')}
+              aria-label={translate('Ungroup')}
               onPress={handleDeleteGroupPress}
             />
 
@@ -161,7 +166,9 @@ function QualityProfileItemGroup({
       {mode === 'default' ? null : (
         <div className={mode === 'editGroups' ? styles.items : undefined}>
           {items
-            .map(({ quality }, index) => {
+            .map((subItem, index) => {
+              const { quality, minSize, maxSize, preferredSize } = subItem;
+
               return (
                 <QualityProfileItemDragSource
                   key={quality.id}
@@ -170,9 +177,14 @@ function QualityProfileItemGroup({
                   qualityId={quality.id}
                   name={quality.name}
                   allowed={allowed}
-                  minSize={quality.minSize}
-                  maxSize={quality.maxSize}
-                  preferredSize={quality.preferredSize}
+                  minSize={minSize}
+                  maxSize={maxSize}
+                  preferredSize={preferredSize}
+                  failures={
+                    itemFailures
+                      ? getItemFailures(itemFailures, groupBaseIndex, index)
+                      : undefined
+                  }
                   qualityIndex={`${qualityIndex}.${index + 1}`}
                   isDraggingUp={isDraggingUp}
                   isDraggingDown={isDraggingDown}

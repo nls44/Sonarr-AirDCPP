@@ -1,6 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { useSelector } from 'react-redux';
-import AppState from 'App/State/AppState';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Alert from 'Components/Alert';
 import TextInput from 'Components/Form/TextInput';
 import Icon from 'Components/Icon';
@@ -12,6 +10,7 @@ import PageContentBody from 'Components/Page/PageContentBody';
 import useDebounce from 'Helpers/Hooks/useDebounce';
 import useQueryParams from 'Helpers/Hooks/useQueryParams';
 import { icons, kinds } from 'Helpers/Props';
+import { useHasSeries } from 'Series/useSeries';
 import { InputChanged } from 'typings/inputs';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
@@ -21,12 +20,9 @@ import styles from './AddNewSeries.css';
 
 function AddNewSeries() {
   const { term: initialTerm = '' } = useQueryParams<{ term: string }>();
-
-  const seriesCount = useSelector(
-    (state: AppState) => state.series.items.length
-  );
-
+  const hasSeries = useHasSeries();
   const [term, setTerm] = useState(initialTerm);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [isFetching, setIsFetching] = useState(false);
   const query = useDebounce(term, term ? 300 : 0);
 
@@ -41,13 +37,10 @@ function AddNewSeries() {
   const handleClearSeriesLookupPress = useCallback(() => {
     setTerm('');
     setIsFetching(false);
+    searchInputRef.current?.focus();
   }, []);
 
-  const {
-    isFetching: isFetchingApi,
-    error,
-    data = [],
-  } = useLookupSeries(query);
+  const { isFetching: isFetchingApi, error, data } = useLookupSeries(query);
 
   useEffect(() => {
     setIsFetching(isFetchingApi);
@@ -66,6 +59,7 @@ function AddNewSeries() {
           </div>
 
           <TextInput
+            ref={searchInputRef}
             className={styles.searchInput}
             name="seriesLookup"
             value={term}
@@ -127,7 +121,7 @@ function AddNewSeries() {
           </div>
         )}
 
-        {!term && !seriesCount ? (
+        {!term && !hasSeries ? (
           <div className={styles.message}>
             <div className={styles.noSeriesText}>
               {translate('NoSeriesHaveBeenAdded')}

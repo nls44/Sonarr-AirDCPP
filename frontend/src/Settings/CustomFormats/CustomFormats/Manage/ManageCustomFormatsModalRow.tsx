@@ -1,7 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { createSelector } from 'reselect';
-import AppState from 'App/State/AppState';
+import { useSelect } from 'App/Select/SelectContext';
 import IconButton from 'Components/Link/IconButton';
 import ConfirmModal from 'Components/Modal/ConfirmModal';
 import TableRowCell from 'Components/Table/Cells/TableRowCell';
@@ -9,10 +7,10 @@ import TableSelectCell from 'Components/Table/Cells/TableSelectCell';
 import Column from 'Components/Table/Column';
 import TableRow from 'Components/Table/TableRow';
 import { icons } from 'Helpers/Props';
-import { deleteCustomFormat } from 'Store/Actions/settingsActions';
 import { SelectStateInputProps } from 'typings/props';
 import translate from 'Utilities/String/translate';
 import EditCustomFormatModal from '../EditCustomFormatModal';
+import { CustomFormat, useDeleteCustomFormat } from '../useCustomFormats';
 import styles from './ManageCustomFormatsModalRow.css';
 
 interface ManageCustomFormatsModalRowProps {
@@ -20,30 +18,16 @@ interface ManageCustomFormatsModalRowProps {
   name: string;
   includeCustomFormatWhenRenaming: boolean;
   columns: Column[];
-  isSelected?: boolean;
-  onSelectedChange(result: SelectStateInputProps): void;
 }
 
-function isDeletingSelector() {
-  return createSelector(
-    (state: AppState) => state.settings.customFormats.isDeleting,
-    (isDeleting) => {
-      return isDeleting;
-    }
-  );
-}
-
-function ManageCustomFormatsModalRow(props: ManageCustomFormatsModalRowProps) {
-  const {
-    id,
-    isSelected,
-    name,
-    includeCustomFormatWhenRenaming,
-    onSelectedChange,
-  } = props;
-
-  const dispatch = useDispatch();
-  const isDeleting = useSelector(isDeletingSelector());
+function ManageCustomFormatsModalRow({
+  id,
+  name,
+  includeCustomFormatWhenRenaming,
+}: ManageCustomFormatsModalRowProps) {
+  const { toggleSelected, useIsSelected } = useSelect<CustomFormat>();
+  const isSelected = useIsSelected(id);
+  const { deleteCustomFormat, isDeleting } = useDeleteCustomFormat(id);
 
   const [isEditCustomFormatModalOpen, setIsEditCustomFormatModalOpen] =
     useState(false);
@@ -51,42 +35,40 @@ function ManageCustomFormatsModalRow(props: ManageCustomFormatsModalRowProps) {
   const [isDeleteCustomFormatModalOpen, setIsDeleteCustomFormatModalOpen] =
     useState(false);
 
-  const handlelectedChange = useCallback(
-    (result: SelectStateInputProps) => {
-      onSelectedChange({
-        ...result,
-      });
+  const handleSelectedChange = useCallback(
+    ({ id, value, shiftKey }: SelectStateInputProps) => {
+      toggleSelected({ id, isSelected: value, shiftKey });
     },
-    [onSelectedChange]
+    [toggleSelected]
   );
 
   const handleEditCustomFormatModalOpen = useCallback(() => {
     setIsEditCustomFormatModalOpen(true);
-  }, [setIsEditCustomFormatModalOpen]);
+  }, []);
 
   const handleEditCustomFormatModalClose = useCallback(() => {
     setIsEditCustomFormatModalOpen(false);
-  }, [setIsEditCustomFormatModalOpen]);
+  }, []);
 
   const handleDeleteCustomFormatPress = useCallback(() => {
     setIsEditCustomFormatModalOpen(false);
     setIsDeleteCustomFormatModalOpen(true);
-  }, [setIsEditCustomFormatModalOpen, setIsDeleteCustomFormatModalOpen]);
+  }, []);
 
   const handleDeleteCustomFormatModalClose = useCallback(() => {
     setIsDeleteCustomFormatModalOpen(false);
-  }, [setIsDeleteCustomFormatModalOpen]);
+  }, []);
 
   const handleConfirmDeleteCustomFormat = useCallback(() => {
-    dispatch(deleteCustomFormat({ id }));
-  }, [id, dispatch]);
+    deleteCustomFormat();
+  }, [deleteCustomFormat]);
 
   return (
     <TableRow>
       <TableSelectCell
         id={id}
         isSelected={isSelected}
-        onSelectedChange={handlelectedChange}
+        onSelectedChange={handleSelectedChange}
       />
 
       <TableRowCell className={styles.name}>{name}</TableRowCell>
@@ -98,6 +80,7 @@ function ManageCustomFormatsModalRow(props: ManageCustomFormatsModalRowProps) {
       <TableRowCell className={styles.actions}>
         <IconButton
           name={icons.EDIT}
+          aria-label={translate('Edit')}
           onPress={handleEditCustomFormatModalOpen}
         />
       </TableRowCell>

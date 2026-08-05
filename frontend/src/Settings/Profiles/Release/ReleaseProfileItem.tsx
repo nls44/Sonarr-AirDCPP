@@ -1,6 +1,4 @@
 import React, { useCallback } from 'react';
-import { useDispatch } from 'react-redux';
-import { Tag } from 'App/State/TagsAppState';
 import Card from 'Components/Card';
 import Label from 'Components/Label';
 import MiddleTruncate from 'Components/MiddleTruncate';
@@ -8,16 +6,19 @@ import ConfirmModal from 'Components/Modal/ConfirmModal';
 import TagList from 'Components/TagList';
 import useModalOpenState from 'Helpers/Hooks/useModalOpenState';
 import { kinds } from 'Helpers/Props';
-import { deleteReleaseProfile } from 'Store/Actions/Settings/releaseProfiles';
-import Indexer from 'typings/Indexer';
-import ReleaseProfile from 'typings/Settings/ReleaseProfile';
+import { IndexerModel } from 'Settings/Indexers/useIndexers';
+import { Tag } from 'Tags/useTags';
 import translate from 'Utilities/String/translate';
 import EditReleaseProfileModal from './EditReleaseProfileModal';
+import {
+  ReleaseProfileModel,
+  useDeleteReleaseProfile,
+} from './useReleaseProfiles';
 import styles from './ReleaseProfileItem.css';
 
-interface ReleaseProfileProps extends ReleaseProfile {
-  tagList: Tag[];
-  indexerList: Indexer[];
+interface ReleaseProfileProps extends ReleaseProfileModel {
+  tagList: ReadonlyArray<Tag>;
+  indexerList: ReadonlyArray<IndexerModel>;
 }
 
 function ReleaseProfileItem(props: ReleaseProfileProps) {
@@ -27,13 +28,14 @@ function ReleaseProfileItem(props: ReleaseProfileProps) {
     enabled = true,
     required = [],
     ignored = [],
+    indexerIds = [],
     tags,
-    indexerId = 0,
+    excludedTags,
     tagList,
     indexerList,
   } = props;
 
-  const dispatch = useDispatch();
+  const { deleteReleaseProfile } = useDeleteReleaseProfile(id);
 
   const [
     isEditReleaseProfileModalOpen,
@@ -48,16 +50,16 @@ function ReleaseProfileItem(props: ReleaseProfileProps) {
   ] = useModalOpenState(false);
 
   const handleDeletePress = useCallback(() => {
-    dispatch(deleteReleaseProfile({ id }));
-  }, [id, dispatch]);
+    deleteReleaseProfile();
+  }, [deleteReleaseProfile]);
 
-  const indexer =
-    indexerId !== 0 && indexerList.find((i) => i.id === indexerId);
+  const indexers = indexerList.filter((i) => indexerIds.includes(i.id));
 
   return (
     <Card
       className={styles.releaseProfile}
       overlayContent={true}
+      aria-label={translate('EditReleaseProfileName', { name: name ?? id })}
       onPress={setEditReleaseProfileModalOpen}
     >
       {name ? <div className={styles.name}>{name}</div> : null}
@@ -92,6 +94,8 @@ function ReleaseProfileItem(props: ReleaseProfileProps) {
 
       <TagList tags={tags} tagList={tagList} />
 
+      <TagList tags={excludedTags} tagList={tagList} kind={kinds.DANGER} />
+
       <div>
         {enabled ? null : (
           <Label kind={kinds.DISABLED} outline={true}>
@@ -99,11 +103,11 @@ function ReleaseProfileItem(props: ReleaseProfileProps) {
           </Label>
         )}
 
-        {indexer ? (
-          <Label kind={kinds.INFO} outline={true}>
+        {indexers.map((indexer) => (
+          <Label key={indexer.id} kind={kinds.INFO} outline={true}>
             {indexer.name}
           </Label>
-        ) : null}
+        ))}
       </div>
 
       <EditReleaseProfileModal

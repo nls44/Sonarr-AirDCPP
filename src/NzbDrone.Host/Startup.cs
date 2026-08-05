@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Threading.Tasks;
 using DryIoc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
@@ -12,7 +14,7 @@ using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using NLog.Extensions.Logging;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Instrumentation;
@@ -34,6 +36,8 @@ using Sonarr.Http.ClientSchema;
 using Sonarr.Http.ErrorManagement;
 using Sonarr.Http.Frontend;
 using Sonarr.Http.Middleware;
+using StackExchange.Profiling;
+using IPNetwork = System.Net.IPNetwork;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 
 namespace NzbDrone.Host
@@ -54,7 +58,7 @@ namespace NzbDrone.Host
                 b.ClearProviders();
                 b.SetMinimumLevel(LogLevel.Trace);
                 b.AddFilter("Microsoft.AspNetCore", LogLevel.Warning);
-                b.AddFilter("Sonarr.Http.Authentication", LogLevel.Information);
+                b.AddFilter("Sonarr.Http.Authentication.ApiKeyAuthenticationHandler", LogLevel.Information);
                 b.AddFilter("Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager", LogLevel.Error);
                 b.AddNLog();
             });
@@ -62,8 +66,11 @@ namespace NzbDrone.Host
             services.Configure<ForwardedHeadersOptions>(options =>
             {
                 options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
-                options.KnownNetworks.Clear();
-                options.KnownProxies.Clear();
+                options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("10.0.0.0"), 8));
+                options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("172.16.0.0"), 12));
+                options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("192.168.0.0"), 16));
+                options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("fc00::"), 7));
+                options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("fe80::"), 10));
             });
 
             services.AddRouting(options => options.LowercaseUrls = true);
@@ -101,6 +108,11 @@ namespace NzbDrone.Host
             })
             .AddControllersAsServices();
 
+            services.ConfigureHttpJsonOptions(options =>
+            {
+                STJson.ApplySerializerSettings(options.SerializerOptions);
+            });
+
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v3", new OpenApiInfo
@@ -134,18 +146,13 @@ namespace NzbDrone.Host
                     Scheme = "apiKey",
                     Description = "Apikey passed as header",
                     In = ParameterLocation.Header,
-                    Reference = new OpenApiReference
-                    {
-                        Type = ReferenceType.SecurityScheme,
-                        Id = "X-Api-Key"
-                    },
                 };
 
                 c.AddSecurityDefinition("X-Api-Key", apiKeyHeader);
 
-                c.AddSecurityRequirement(new OpenApiSecurityRequirement
+                c.AddSecurityRequirement(document => new OpenApiSecurityRequirement
                 {
-                    { apiKeyHeader, Array.Empty<string>() }
+                    [new OpenApiSecuritySchemeReference(apiKeyHeader.Name, document)] = new List<string>(),
                 });
 
                 var apikeyQuery = new OpenApiSecurityScheme
@@ -155,11 +162,6 @@ namespace NzbDrone.Host
                     Scheme = "apiKey",
                     Description = "Apikey passed as query parameter",
                     In = ParameterLocation.Query,
-                    Reference = new OpenApiReference
-                    {
-                        Type = ReferenceType.SecurityScheme,
-                        Id = "apikey"
-                    },
                 };
 
                 c.AddServer(new OpenApiServer
@@ -174,9 +176,9 @@ namespace NzbDrone.Host
 
                 c.AddSecurityDefinition("apikey", apikeyQuery);
 
-                c.AddSecurityRequirement(new OpenApiSecurityRequirement
+                c.AddSecurityRequirement(document => new OpenApiSecurityRequirement
                 {
-                    { apikeyQuery, Array.Empty<string>() }
+                    [new OpenApiSecuritySchemeReference(apikeyQuery.Name, document)] = new List<string>(),
                 });
 
                 c.DescribeAllParametersInCamelCase();
@@ -241,6 +243,45 @@ namespace NzbDrone.Host
             });
 
             services.AddAppAuthentication();
+
+            services.AddOptions<MiniProfilerOptions>()
+                .Configure<IConfigFileProvider>((options, configFileProvider) =>
+                {
+                    options.RouteBasePath = "/profiler";
+
+                    switch (configFileProvider.Theme)
+                    {
+                        case "light":
+                            options.ColorScheme = ColorScheme.Light;
+                            break;
+                        case "dark":
+                            options.ColorScheme = ColorScheme.Dark;
+                            break;
+                        default:
+                            options.ColorScheme = ColorScheme.Auto;
+                            break;
+                    }
+
+                    switch (configFileProvider.ProfilerPosition)
+                    {
+                        case "top-left":
+                            options.PopupRenderPosition = RenderPosition.Left;
+                            break;
+                        case "top-right":
+                            options.PopupRenderPosition = RenderPosition.Right;
+                            break;
+                        case "bottom-left":
+                            options.PopupRenderPosition = RenderPosition.BottomLeft;
+                            break;
+                        default:
+                            options.PopupRenderPosition = RenderPosition.BottomRight;
+                            break;
+                    }
+
+                    options.IgnoredPaths.Add("/MediaCover");
+                });
+
+            services.AddMiniProfiler();
         }
 
         public void Configure(IApplicationBuilder app,
@@ -317,6 +358,7 @@ namespace NzbDrone.Host
             app.UseMiddleware<BufferingMiddleware>(new List<string> { "/api/v3/command", "/api/v5/command" });
 
             app.UseWebSockets();
+            app.UseMiniProfiler();
 
             // Enable middleware to serve generated Swagger as a JSON endpoint.
             if (BuildInfo.IsDebug)
@@ -330,6 +372,7 @@ namespace NzbDrone.Host
             app.UseEndpoints(x =>
             {
                 x.MapHub<MessageHub>("/signalr/messages").RequireAuthorization("SignalR");
+                x.MapPost("/profiler/results", context => Task.CompletedTask).RequireAuthorization("UI");
                 x.MapControllers();
             });
         }

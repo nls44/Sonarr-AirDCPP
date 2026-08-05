@@ -1,23 +1,23 @@
 import React, { useCallback, useState } from 'react';
-import { useDispatch } from 'react-redux';
 import Card from 'Components/Card';
 import Label from 'Components/Label';
 import IconButton from 'Components/Link/IconButton';
 import ConfirmModal from 'Components/Modal/ConfirmModal';
 import { icons, kinds } from 'Helpers/Props';
 import { Kind } from 'Helpers/Props/kinds';
-import { deleteCustomFormat } from 'Store/Actions/settingsActions';
-import CustomFormatSpecification from 'typings/CustomFormatSpecification';
 import translate from 'Utilities/String/translate';
 import EditCustomFormatModal from './EditCustomFormatModal';
 import ExportCustomFormatModal from './ExportCustomFormatModal';
+import {
+  CustomFormatSpecification,
+  useDeleteCustomFormat,
+} from './useCustomFormats';
 import styles from './CustomFormat.css';
 
 interface CustomFormatProps {
   id: number;
   name: string;
   specifications: CustomFormatSpecification[];
-  isDeleting: boolean;
   onCloneCustomFormatPress: (id: number) => void;
 }
 
@@ -25,10 +25,9 @@ function CustomFormat({
   id,
   name,
   specifications,
-  isDeleting,
   onCloneCustomFormatPress,
 }: CustomFormatProps) {
-  const dispatch = useDispatch();
+  const { deleteCustomFormat, isDeleting } = useDeleteCustomFormat(id);
 
   const [isEditCustomFormatModalOpen, setIsEditCustomFormatModalOpen] =
     useState(false);
@@ -54,9 +53,9 @@ function CustomFormat({
     setIsDeleteCustomFormatModalOpen(false);
   }, []);
 
-  const handleConfirmDeleteCustomFormatHandler = useCallback(() => {
-    dispatch(deleteCustomFormat({ id }));
-  }, [id, dispatch]);
+  const handleConfirmDeleteCustomFormat = useCallback(() => {
+    deleteCustomFormat();
+  }, [deleteCustomFormat]);
 
   const handleCloneCustomFormatPressHandler = useCallback(() => {
     onCloneCustomFormatPress(id);
@@ -74,6 +73,7 @@ function CustomFormat({
     <Card
       className={styles.customFormat}
       overlayContent={true}
+      aria-label={translate('EditCustomFormatName', { name })}
       onPress={onEditCustomFormatPress}
     >
       <div className={styles.nameContainer}>
@@ -83,6 +83,7 @@ function CustomFormat({
           <IconButton
             className={styles.cloneButton}
             title={translate('CloneCustomFormat')}
+            aria-label={translate('CloneCustomFormat')}
             name={icons.CLONE}
             onPress={handleCloneCustomFormatPressHandler}
           />
@@ -90,6 +91,7 @@ function CustomFormat({
           <IconButton
             className={styles.cloneButton}
             title={translate('ExportCustomFormat')}
+            aria-label={translate('ExportCustomFormat')}
             name={icons.EXPORT}
             onPress={handleExportCustomFormatPress}
           />
@@ -107,6 +109,7 @@ function CustomFormat({
           if (item.required) {
             kind = kinds.SUCCESS;
           }
+
           if (item.negate) {
             kind = kinds.DANGER;
           }
@@ -139,7 +142,7 @@ function CustomFormat({
         message={translate('DeleteCustomFormatMessageText', { name })}
         confirmLabel={translate('Delete')}
         isSpinning={isDeleting}
-        onConfirm={handleConfirmDeleteCustomFormatHandler}
+        onConfirm={handleConfirmDeleteCustomFormat}
         onCancel={handleDeleteCustomFormatModalClose}
       />
     </Card>

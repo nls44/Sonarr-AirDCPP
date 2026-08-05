@@ -1,5 +1,5 @@
 import React from 'react';
-import { Error } from 'App/State/AppSectionState';
+import { ApiError } from 'Utilities/Fetch/fetchJson';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
 import styles from './ErrorPage.css';
@@ -7,13 +7,13 @@ import styles from './ErrorPage.css';
 interface ErrorPageProps {
   version: string;
   isLocalStorageSupported: boolean;
-  translationsError?: Error;
-  seriesError?: Error;
-  customFiltersError?: Error;
-  tagsError?: Error;
-  qualityProfilesError?: Error;
-  uiSettingsError?: Error;
-  systemStatusError?: Error;
+  translationsError: ApiError | null;
+  seriesError: ApiError | null;
+  customFiltersError: ApiError | null;
+  tagsError: ApiError | null;
+  qualityProfilesError: ApiError | null;
+  uiSettingsError: ApiError | null;
+  systemStatusError: ApiError | null;
 }
 
 function ErrorPage(props: ErrorPageProps) {

@@ -4,10 +4,11 @@ using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Security;
 using NzbDrone.Core.Update;
 using Sonarr.Http.REST;
+using Sonarr.Http.Validation;
 
 namespace Sonarr.Api.V3.Config
 {
-    public class HostConfigResource : RestResource
+    public class HostConfigResource : RestResource, ISslCertificateResource
     {
         public string BindAddress { get; set; }
         public int Port { get; set; }
@@ -26,6 +27,7 @@ namespace Sonarr.Api.V3.Config
         public string Branch { get; set; }
         public string ApiKey { get; set; }
         public string SslCertPath { get; set; }
+        public string SslKeyPath { get; set; }
         public string SslCertPassword { get; set; }
         public string UrlBase { get; set; }
         public string InstanceName { get; set; }
@@ -72,6 +74,7 @@ namespace Sonarr.Api.V3.Config
                 Branch = model.Branch,
                 ApiKey = model.ApiKey,
                 SslCertPath = model.SslCertPath,
+                SslKeyPath = model.SslKeyPath,
                 SslCertPassword = model.SslCertPassword,
                 UrlBase = model.UrlBase,
                 InstanceName = model.InstanceName,

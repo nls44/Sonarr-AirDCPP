@@ -1,15 +1,14 @@
 import React, { useCallback, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import ProtocolLabel from 'Activity/Queue/ProtocolLabel';
 import Card from 'Components/Card';
 import Label from 'Components/Label';
 import IconButton from 'Components/Link/IconButton';
 import ConfirmModal from 'Components/Modal/ConfirmModal';
 import TagList from 'Components/TagList';
 import { icons, kinds } from 'Helpers/Props';
-import { deleteIndexer } from 'Store/Actions/settingsActions';
-import createTagsSelector from 'Store/Selectors/createTagsSelector';
-import IndexerModel from 'typings/Indexer';
+import { useTagList } from 'Tags/useTags';
 import translate from 'Utilities/String/translate';
+import { IndexerModel, useDeleteIndexer } from '../useIndexers';
 import EditIndexerModal from './EditIndexerModal';
 import styles from './Indexer.css';
 
@@ -21,6 +20,7 @@ interface IndexerProps extends IndexerModel {
 function Indexer({
   id,
   name,
+  protocol,
   enableRss,
   enableAutomaticSearch,
   enableInteractiveSearch,
@@ -31,8 +31,8 @@ function Indexer({
   showPriority,
   onCloneIndexerPress,
 }: IndexerProps) {
-  const dispatch = useDispatch();
-  const tagList = useSelector(createTagsSelector());
+  const tagList = useTagList();
+  const { deleteIndexer } = useDeleteIndexer(id);
 
   const [isEditIndexerModalOpen, setIsEditIndexerModalOpen] = useState(false);
   const [isDeleteIndexerModalOpen, setIsDeleteIndexerModalOpen] =
@@ -56,8 +56,8 @@ function Indexer({
   }, []);
 
   const handleConfirmDeleteIndexer = useCallback(() => {
-    dispatch(deleteIndexer({ id }));
-  }, [id, dispatch]);
+    deleteIndexer();
+  }, [deleteIndexer]);
 
   const handleCloneIndexerPress = useCallback(() => {
     onCloneIndexerPress(id);
@@ -67,6 +67,7 @@ function Indexer({
     <Card
       className={styles.indexer}
       overlayContent={true}
+      aria-label={translate('EditIndexerName', { name })}
       onPress={handleEditIndexerPress}
     >
       <div className={styles.nameContainer}>
@@ -75,12 +76,15 @@ function Indexer({
         <IconButton
           className={styles.cloneButton}
           title={translate('CloneIndexer')}
+          aria-label={translate('CloneIndexer')}
           name={icons.CLONE}
           onPress={handleCloneIndexerPress}
         />
       </div>
 
       <div className={styles.enabled}>
+        <ProtocolLabel protocol={protocol} />
+
         {supportsRss && enableRss ? (
           <Label kind={kinds.SUCCESS}>{translate('Rss')}</Label>
         ) : null}

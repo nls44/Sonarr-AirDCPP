@@ -1,16 +1,15 @@
 import React, { useCallback, useState } from 'react';
-import { useDispatch } from 'react-redux';
 import Card from 'Components/Card';
 import Label from 'Components/Label';
 import IconButton from 'Components/Link/IconButton';
 import ConfirmModal from 'Components/Modal/ConfirmModal';
 import TagList from 'Components/TagList';
 import { icons, kinds } from 'Helpers/Props';
-import { deleteImportList } from 'Store/Actions/settingsActions';
-import useTags from 'Tags/useTags';
+import { useTagList } from 'Tags/useTags';
 import formatShortTimeSpan from 'Utilities/Date/formatShortTimeSpan';
 import translate from 'Utilities/String/translate';
 import EditImportListModal from './EditImportListModal';
+import { useDeleteImportList } from './useImportLists';
 import styles from './ImportList.css';
 
 interface ImportListProps {
@@ -18,6 +17,7 @@ interface ImportListProps {
   name: string;
   enableAutomaticAdd: boolean;
   tags: number[];
+  tagExisting: boolean;
   minRefreshInterval: string;
   onCloneImportListPress: (id: number) => void;
 }
@@ -30,8 +30,8 @@ function ImportList({
   minRefreshInterval,
   onCloneImportListPress,
 }: ImportListProps) {
-  const dispatch = useDispatch();
-  const tagList = useTags();
+  const tagList = useTagList();
+  const { deleteImportList } = useDeleteImportList(id);
 
   const [isEditImportListModalOpen, setIsEditImportListModalOpen] =
     useState(false);
@@ -57,8 +57,8 @@ function ImportList({
   }, []);
 
   const handleConfirmDeleteImportList = useCallback(() => {
-    dispatch(deleteImportList({ id }));
-  }, [id, dispatch]);
+    deleteImportList();
+  }, [deleteImportList]);
 
   const handleCloneImportListPress = useCallback(() => {
     onCloneImportListPress(id);
@@ -68,6 +68,7 @@ function ImportList({
     <Card
       className={styles.list}
       overlayContent={true}
+      aria-label={translate('EditImportListName', { name })}
       onPress={handleEditImportListPress}
     >
       <div className={styles.nameContainer}>
@@ -76,6 +77,7 @@ function ImportList({
         <IconButton
           className={styles.cloneButton}
           title={translate('CloneImportList')}
+          aria-label={translate('CloneImportList')}
           name={icons.CLONE}
           onPress={handleCloneImportListPress}
         />

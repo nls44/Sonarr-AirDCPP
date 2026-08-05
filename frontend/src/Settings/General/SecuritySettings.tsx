@@ -1,6 +1,6 @@
 import React, { FocusEvent, useCallback, useState } from 'react';
-import { useDispatch } from 'react-redux';
-import * as commandNames from 'Commands/commandNames';
+import CommandNames from 'Commands/CommandNames';
+import { useExecuteCommand } from 'Commands/useCommands';
 import FieldSet from 'Components/FieldSet';
 import FormGroup from 'Components/Form/FormGroup';
 import FormInputButton from 'Components/Form/FormInputButton';
@@ -11,11 +11,10 @@ import Icon from 'Components/Icon';
 import ClipboardButton from 'Components/Link/ClipboardButton';
 import ConfirmModal from 'Components/Modal/ConfirmModal';
 import { icons, inputTypes, kinds } from 'Helpers/Props';
-import { executeCommand } from 'Store/Actions/commandActions';
 import { InputChanged } from 'typings/inputs';
 import { PendingSection } from 'typings/pending';
-import General from 'typings/Settings/General';
 import translate from 'Utilities/String/translate';
+import { GeneralSettingsModel } from './useGeneralSettings';
 
 export const authenticationMethodOptions: EnhancedSelectInputValue<string>[] = [
   {
@@ -62,6 +61,12 @@ export const authenticationRequiredOptions: EnhancedSelectInputValue<string>[] =
         return translate('DisabledForLocalAddresses');
       },
     },
+    {
+      key: 'disabledForLocalHost',
+      get value() {
+        return translate('DisabledForLocalhost');
+      },
+    },
   ];
 
 const certificateValidationOptions: EnhancedSelectInputValue<string>[] = [
@@ -86,13 +91,13 @@ const certificateValidationOptions: EnhancedSelectInputValue<string>[] = [
 ];
 
 interface SecuritySettingsProps {
-  authenticationMethod: PendingSection<General>['authenticationMethod'];
-  authenticationRequired: PendingSection<General>['authenticationRequired'];
-  username: PendingSection<General>['username'];
-  password: PendingSection<General>['password'];
-  passwordConfirmation: PendingSection<General>['passwordConfirmation'];
-  apiKey: PendingSection<General>['apiKey'];
-  certificateValidation: PendingSection<General>['certificateValidation'];
+  authenticationMethod: PendingSection<GeneralSettingsModel>['authenticationMethod'];
+  authenticationRequired: PendingSection<GeneralSettingsModel>['authenticationRequired'];
+  username: PendingSection<GeneralSettingsModel>['username'];
+  password: PendingSection<GeneralSettingsModel>['password'];
+  passwordConfirmation: PendingSection<GeneralSettingsModel>['passwordConfirmation'];
+  apiKey: PendingSection<GeneralSettingsModel>['apiKey'];
+  certificateValidation: PendingSection<GeneralSettingsModel>['certificateValidation'];
   isResettingApiKey: boolean;
   onInputChange: (change: InputChanged) => void;
 }
@@ -108,7 +113,7 @@ function SecuritySettings({
   isResettingApiKey,
   onInputChange,
 }: SecuritySettingsProps) {
-  const dispatch = useDispatch();
+  const executeCommand = useExecuteCommand();
 
   const [isConfirmApiKeyResetModalOpen, setIsConfirmApiKeyResetModalOpen] =
     useState(false);
@@ -127,14 +132,14 @@ function SecuritySettings({
   const handleConfirmResetApiKey = useCallback(() => {
     setIsConfirmApiKeyResetModalOpen(false);
 
-    dispatch(executeCommand({ name: commandNames.RESET_API_KEY }));
-  }, [dispatch]);
+    executeCommand({ name: CommandNames.ResetApiKey });
+  }, [executeCommand]);
 
   const handleCloseResetApiKeyModal = useCallback(() => {
     setIsConfirmApiKeyResetModalOpen(false);
   }, []);
 
-  // createCommandExecutingSelector(commandNames.RESET_API_KEY),
+  // createCommandExecutingSelector(CommandNames.RESET_API_KEY),
 
   const authenticationEnabled =
     authenticationMethod && authenticationMethod.value !== 'none';

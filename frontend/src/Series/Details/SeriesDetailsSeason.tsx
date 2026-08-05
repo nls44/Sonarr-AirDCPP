@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { createSelector } from 'reselect';
-import EpisodesAppState from 'App/State/EpisodesAppState';
-import * as commandNames from 'Commands/commandNames';
+import { useAppDimension } from 'App/appStore';
+import CommandNames from 'Commands/CommandNames';
+import { useCommands, useExecuteCommand } from 'Commands/useCommands';
 import Icon from 'Components/Icon';
 import Label from 'Components/Label';
 import IconButton from 'Components/Link/IconButton';
@@ -18,6 +17,13 @@ import Table from 'Components/Table/Table';
 import TableBody from 'Components/Table/TableBody';
 import Popover from 'Components/Tooltip/Popover';
 import Episode from 'Episode/Episode';
+import {
+  setEpisodeOptions,
+  setEpisodeSort,
+  useEpisodeOptions,
+} from 'Episode/episodeOptionsStore';
+import { getQueryKey, useToggleEpisodesMonitored } from 'Episode/useEpisode';
+import { useSeasonEpisodes } from 'Episode/useEpisodes';
 import usePrevious from 'Helpers/Hooks/usePrevious';
 import { align, icons, sortDirections, tooltipPositions } from 'Helpers/Props';
 import { SortDirection } from 'Helpers/Props/sortDirections';
@@ -26,16 +32,7 @@ import OrganizePreviewModal from 'Organize/OrganizePreviewModal';
 import SeriesHistoryModal from 'Series/History/SeriesHistoryModal';
 import SeasonInteractiveSearchModal from 'Series/Search/SeasonInteractiveSearchModal';
 import { Statistics } from 'Series/Series';
-import useSeries from 'Series/useSeries';
-import {
-  setEpisodesSort,
-  setEpisodesTableOption,
-  toggleEpisodesMonitored,
-} from 'Store/Actions/episodeActions';
-import { toggleSeasonMonitored } from 'Store/Actions/seriesActions';
-import createClientSideCollectionSelector from 'Store/Selectors/createClientSideCollectionSelector';
-import createCommandsSelector from 'Store/Selectors/createCommandsSelector';
-import createDimensionsSelector from 'Store/Selectors/createDimensionsSelector';
+import { useSingleSeries, useToggleSeasonMonitored } from 'Series/useSeries';
 import { TableOptionsChangePayload } from 'typings/Table';
 import { findCommand, isCommandExecuting } from 'Utilities/Command';
 import isAfter from 'Utilities/Date/isAfter';
@@ -86,31 +83,15 @@ function getSeasonStatistics(episodes: Episode[]) {
   };
 }
 
-function createEpisodesSelector(seasonNumber: number) {
-  return createSelector(
-    createClientSideCollectionSelector('episodes'),
-    (episodes: EpisodesAppState) => {
-      const { items, columns, sortKey, sortDirection } = episodes;
-
-      const episodesInSeason = items.filter(
-        (episode) => episode.seasonNumber === seasonNumber
-      );
-
-      return { items: episodesInSeason, columns, sortKey, sortDirection };
-    }
+function useIsSearching(seriesId: number, seasonNumber: number) {
+  const { data: commands } = useCommands();
+  return isCommandExecuting(
+    findCommand(commands, {
+      name: CommandNames.SeasonSearch,
+      seriesId,
+      seasonNumber,
+    })
   );
-}
-
-function createIsSearchingSelector(seriesId: number, seasonNumber: number) {
-  return createSelector(createCommandsSelector(), (commands) => {
-    return isCommandExecuting(
-      findCommand(commands, {
-        name: commandNames.SEASON_SEARCH,
-        seriesId,
-        seasonNumber,
-      })
-    );
-  });
 }
 
 interface SeriesDetailsSeasonProps {
@@ -118,7 +99,6 @@ interface SeriesDetailsSeasonProps {
   monitored: boolean;
   seasonNumber: number;
   statistics?: Statistics;
-  isSaving?: boolean;
   isExpanded?: boolean;
   onExpandPress: (seasonNumber: number, isExpanded: boolean) => void;
 }
@@ -128,21 +108,17 @@ function SeriesDetailsSeason({
   monitored,
   seasonNumber,
   statistics = {} as Statistics,
-  isSaving,
   isExpanded,
   onExpandPress,
 }: SeriesDetailsSeasonProps) {
-  const dispatch = useDispatch();
-  const { monitored: seriesMonitored, path } = useSeries(seriesId)!;
+  const executeCommand = useExecuteCommand();
+  const { monitored: seriesMonitored, path } = useSingleSeries(seriesId)!;
+  const { data: items } = useSeasonEpisodes(seriesId, seasonNumber);
 
-  const { items, columns, sortKey, sortDirection } = useSelector(
-    createEpisodesSelector(seasonNumber)
-  );
+  const { columns, sortKey, sortDirection } = useEpisodeOptions();
 
-  const { isSmallScreen } = useSelector(createDimensionsSelector());
-  const isSearching = useSelector(
-    createIsSearchingSelector(seriesId, seasonNumber)
-  );
+  const isSmallScreen = useAppDimension('isSmallScreen');
+  const isSearching = useIsSearching(seriesId, seasonNumber);
 
   const { sizeOnDisk = 0 } = statistics;
 
@@ -162,10 +138,14 @@ function SeriesDetailsSeason({
   const [isInteractiveSearchModalOpen, setIsInteractiveSearchModalOpen] =
     useState(false);
 
-  const lastToggledEpisode = useRef<number | null>(null);
-  const itemsRef = useRef(items);
+  const { toggleEpisodesMonitored, isToggling, togglingEpisodeIds } =
+    useToggleEpisodesMonitored(getQueryKey('episodes')!);
 
-  itemsRef.current = items;
+  const { toggleSeasonMonitored, isTogglingSeasonMonitored } =
+    useToggleSeasonMonitored(seriesId);
+
+  const lastToggledEpisode = useRef<number | null>(null);
+  const hasSetInitalExpand = useRef(false);
 
   const seasonNumberTitle =
     seasonNumber === 0
@@ -174,15 +154,12 @@ function SeriesDetailsSeason({
 
   const handleMonitorSeasonPress = useCallback(
     (value: boolean) => {
-      dispatch(
-        toggleSeasonMonitored({
-          seriesId,
-          seasonNumber,
-          monitored: value,
-        })
-      );
+      toggleSeasonMonitored({
+        seasonNumber,
+        monitored: value,
+      });
     },
-    [seriesId, seasonNumber, dispatch]
+    [seasonNumber, toggleSeasonMonitored]
   );
 
   const handleExpandPress = useCallback(() => {
@@ -196,34 +173,33 @@ function SeriesDetailsSeason({
       { shiftKey }: { shiftKey: boolean }
     ) => {
       const lastToggled = lastToggledEpisode.current;
-      const episodeIds = [episodeId];
+      const episodeIds = new Set([episodeId]);
 
       if (shiftKey && lastToggled) {
         const { lower, upper } = getToggledRange(items, episodeId, lastToggled);
+
         for (let i = lower; i < upper; i++) {
-          episodeIds.push(items[i].id);
+          episodeIds.add(items[i].id);
         }
       }
 
       lastToggledEpisode.current = episodeId;
 
-      dispatch(
-        toggleEpisodesMonitored({
-          episodeIds,
-          value,
-        })
-      );
+      toggleEpisodesMonitored({
+        episodeIds: Array.from(episodeIds),
+        monitored: value,
+      });
     },
-    [items, dispatch]
+    [items, toggleEpisodesMonitored]
   );
 
   const handleSearchPress = useCallback(() => {
-    dispatch({
-      name: commandNames.SEASON_SEARCH,
+    executeCommand({
+      name: CommandNames.SeasonSearch,
       seriesId,
       seasonNumber,
     });
-  }, [seriesId, seasonNumber, dispatch]);
+  }, [seriesId, seasonNumber, executeCommand]);
 
   const handleOrganizePress = useCallback(() => {
     setIsOrganizeModalOpen(true);
@@ -259,32 +235,36 @@ function SeriesDetailsSeason({
 
   const handleSortPress = useCallback(
     (sortKey: string, sortDirection?: SortDirection) => {
-      dispatch(
-        setEpisodesSort({
-          sortKey,
-          sortDirection,
-        })
-      );
+      setEpisodeSort({
+        sortKey,
+        sortDirection,
+      });
     },
-    [dispatch]
+    []
   );
 
   const handleTableOptionChange = useCallback(
     (payload: TableOptionsChangePayload) => {
-      dispatch(setEpisodesTableOption(payload));
+      setEpisodeOptions(payload);
     },
-    [dispatch]
+    []
   );
 
   useEffect(() => {
+    if (hasSetInitalExpand.current || items.length === 0) {
+      return;
+    }
+
+    hasSetInitalExpand.current = true;
+
     const expand =
-      itemsRef.current.some(
+      items.some(
         (item) =>
           isAfter(item.airDateUtc) || isAfter(item.airDateUtc, { days: -30 })
-      ) || itemsRef.current.every((item) => !item.airDateUtc);
+      ) || items.every((item) => !item.airDateUtc);
 
     onExpandPress(seasonNumber, expand && seasonNumber > 0);
-  }, [seriesId, seasonNumber, onExpandPress]);
+  }, [items, seriesId, seasonNumber, onExpandPress]);
 
   useEffect(() => {
     if ((previousEpisodeFileCount ?? 0) > 0 && episodeFileCount === 0) {
@@ -300,7 +280,7 @@ function SeriesDetailsSeason({
           <MonitorToggleButton
             monitored={monitored}
             isDisabled={!seriesMonitored}
-            isSaving={isSaving}
+            isSaving={isTogglingSeasonMonitored}
             size={24}
             onPress={handleMonitorSeasonPress}
           />
@@ -452,6 +432,7 @@ function SeriesDetailsSeason({
               className={styles.actionButton}
               name={icons.INTERACTIVE}
               title={translate('InteractiveSearchSeason')}
+              aria-label={translate('InteractiveSearchSeason')}
               size={24}
               isDisabled={!totalEpisodeCount}
               onPress={handleInteractiveSearchPress}
@@ -461,6 +442,7 @@ function SeriesDetailsSeason({
               className={styles.actionButton}
               name={icons.ORGANIZE}
               title={translate('PreviewRenameSeason')}
+              aria-label={translate('PreviewRenameSeason')}
               size={24}
               isDisabled={!episodeFileCount}
               onPress={handleOrganizePress}
@@ -470,6 +452,7 @@ function SeriesDetailsSeason({
               className={styles.actionButton}
               name={icons.EPISODE_FILE}
               title={translate('ManageEpisodesSeason')}
+              aria-label={translate('ManageEpisodesSeason')}
               size={24}
               isDisabled={!episodeFileCount}
               onPress={handleManageEpisodesPress}
@@ -479,6 +462,7 @@ function SeriesDetailsSeason({
               className={styles.actionButton}
               name={icons.HISTORY}
               title={translate('HistorySeason')}
+              aria-label={translate('HistorySeason')}
               size={24}
               isDisabled={!totalEpisodeCount}
               onPress={handleHistoryPress}
@@ -505,6 +489,9 @@ function SeriesDetailsSeason({
                         key={item.id}
                         columns={columns}
                         {...item}
+                        isSaving={
+                          isToggling && togglingEpisodeIds.includes(item.id)
+                        }
                         onMonitorEpisodePress={handleMonitorEpisodePress}
                       />
                     );
@@ -523,6 +510,7 @@ function SeriesDetailsSeason({
                 name={icons.COLLAPSE}
                 size={20}
                 title={translate('HideEpisodes')}
+                aria-label={translate('HideEpisodes')}
                 onPress={handleExpandPress}
               />
             </div>

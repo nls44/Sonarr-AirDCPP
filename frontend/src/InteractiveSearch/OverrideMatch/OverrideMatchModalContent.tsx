@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
 import DescriptionList from 'Components/DescriptionList/DescriptionList';
 import DescriptionListItem from 'Components/DescriptionList/DescriptionListItem';
 import Button from 'Components/Link/Button';
@@ -18,14 +17,12 @@ import SelectLanguageModal from 'InteractiveImport/Language/SelectLanguageModal'
 import SelectQualityModal from 'InteractiveImport/Quality/SelectQualityModal';
 import SelectSeasonModal from 'InteractiveImport/Season/SelectSeasonModal';
 import SelectSeriesModal from 'InteractiveImport/Series/SelectSeriesModal';
+import { ReleaseEpisode, useGrabRelease } from 'InteractiveSearch/useReleases';
 import Language from 'Language/Language';
 import { QualityModel } from 'Quality/Quality';
 import Series from 'Series/Series';
-import { grabRelease } from 'Store/Actions/releaseActions';
-import { fetchDownloadClients } from 'Store/Actions/settingsActions';
-import createEnabledDownloadClientsSelector from 'Store/Selectors/createEnabledDownloadClientsSelector';
-import { createSeriesSelectorForHook } from 'Store/Selectors/createSeriesSelector';
-import { ReleaseEpisode } from 'typings/Release';
+import { useSingleSeries } from 'Series/useSeries';
+import { useEnabledDownloadClients } from 'Settings/DownloadClients/DownloadClients/useDownloadClients';
 import translate from 'Utilities/String/translate';
 import SelectDownloadClientModal from './DownloadClient/SelectDownloadClientModal';
 import OverrideMatchData from './OverrideMatchData';
@@ -40,7 +37,7 @@ type SelectType =
   | 'language'
   | 'downloadClient';
 
-interface OverrideMatchModalContentProps {
+export interface OverrideMatchModalContentProps {
   indexerId: number;
   title: string;
   guid: string;
@@ -52,6 +49,7 @@ interface OverrideMatchModalContentProps {
   protocol: DownloadProtocol;
   isGrabbing: boolean;
   grabError?: string;
+  grabRelease: ReturnType<typeof useGrabRelease>['grabRelease'];
   onModalClose(): void;
 }
 
@@ -64,6 +62,7 @@ function OverrideMatchModalContent(props: OverrideMatchModalContentProps) {
     protocol,
     isGrabbing,
     grabError,
+    grabRelease,
     onModalClose,
   } = props;
 
@@ -79,13 +78,8 @@ function OverrideMatchModalContent(props: OverrideMatchModalContentProps) {
   );
   const previousIsGrabbing = usePrevious(isGrabbing);
 
-  const dispatch = useDispatch();
-  const series: Series | undefined = useSelector(
-    createSeriesSelectorForHook(seriesId)
-  );
-  const { items: downloadClients } = useSelector(
-    createEnabledDownloadClientsSelector(protocol)
-  );
+  const series: Series | undefined = useSingleSeries(seriesId);
+  const { data: downloadClients } = useEnabledDownloadClients(protocol);
 
   const episodeInfo = useMemo(() => {
     return episodes.map((episode) => {
@@ -198,18 +192,17 @@ function OverrideMatchModalContent(props: OverrideMatchModalContentProps) {
       return;
     }
 
-    dispatch(
-      grabRelease({
-        indexerId,
-        guid,
+    grabRelease({
+      indexerId,
+      guid,
+      override: {
         seriesId,
         episodeIds: episodes.map((e) => e.id),
         quality,
         languages,
         downloadClientId,
-        shouldOverride: true,
-      })
-    );
+      },
+    });
   }, [
     indexerId,
     guid,
@@ -219,7 +212,7 @@ function OverrideMatchModalContent(props: OverrideMatchModalContentProps) {
     languages,
     downloadClientId,
     setError,
-    dispatch,
+    grabRelease,
   ]);
 
   useEffect(() => {
@@ -227,14 +220,6 @@ function OverrideMatchModalContent(props: OverrideMatchModalContentProps) {
       onModalClose();
     }
   }, [isGrabbing, previousIsGrabbing, onModalClose]);
-
-  useEffect(
-    () => {
-      dispatch(fetchDownloadClients());
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
 
   return (
     <ModalContent onModalClose={onModalClose}>

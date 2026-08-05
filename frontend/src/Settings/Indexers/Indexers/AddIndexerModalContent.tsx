@@ -1,6 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import AppState from 'App/State/AppState';
+import React, { useMemo } from 'react';
 import Alert from 'Components/Alert';
 import FieldSet from 'Components/FieldSet';
 import Button from 'Components/Link/Button';
@@ -10,14 +8,14 @@ import ModalContent from 'Components/Modal/ModalContent';
 import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import { kinds } from 'Helpers/Props';
-import { fetchIndexerSchema } from 'Store/Actions/settingsActions';
-import Indexer from 'typings/Indexer';
+import { SelectedSchema } from 'Settings/useProviderSchema';
 import translate from 'Utilities/String/translate';
+import { IndexerModel, useIndexerSchema } from '../useIndexers';
 import AddIndexerItem from './AddIndexerItem';
 import styles from './AddIndexerModalContent.css';
 
-interface AddIndexerModalContentProps {
-  onIndexerSelect: () => void;
+export interface AddIndexerModalContentProps {
+  onIndexerSelect: (selectedSchema: SelectedSchema) => void;
   onModalClose: () => void;
 }
 
@@ -25,16 +23,14 @@ function AddIndexerModalContent({
   onIndexerSelect,
   onModalClose,
 }: AddIndexerModalContentProps) {
-  const dispatch = useDispatch();
-
-  const { isSchemaFetching, isSchemaPopulated, schemaError, schema } =
-    useSelector((state: AppState) => state.settings.indexers);
+  const { isSchemaLoading, isSchemaFetched, schemaError, schema } =
+    useIndexerSchema();
 
   const { usenetIndexers, torrentIndexers, directConnectIndexers } =
     useMemo(() => {
       return schema.reduce<{
-        usenetIndexers: Indexer[];
-        torrentIndexers: Indexer[];
+        usenetIndexers: IndexerModel[];
+        torrentIndexers: IndexerModel[];
         directConnectIndexers: Indexer[];
       }>(
         (acc, item) => {
@@ -56,22 +52,18 @@ function AddIndexerModalContent({
       );
     }, [schema]);
 
-  useEffect(() => {
-    dispatch(fetchIndexerSchema());
-  }, [dispatch]);
-
   return (
     <ModalContent onModalClose={onModalClose}>
       <ModalHeader>{translate('AddIndexer')}</ModalHeader>
 
       <ModalBody>
-        {isSchemaFetching ? <LoadingIndicator /> : null}
+        {isSchemaLoading ? <LoadingIndicator /> : null}
 
-        {!isSchemaFetching && !!schemaError ? (
+        {!isSchemaLoading && !!schemaError ? (
           <Alert kind={kinds.DANGER}>{translate('AddIndexerError')}</Alert>
         ) : null}
 
-        {isSchemaPopulated && !schemaError ? (
+        {isSchemaFetched && !schemaError ? (
           <div>
             <Alert kind={kinds.INFO}>
               <div>{translate('SupportedIndexers')}</div>

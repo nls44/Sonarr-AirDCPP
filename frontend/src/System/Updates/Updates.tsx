@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import AppState from 'App/State/AppState';
-import * as commandNames from 'Commands/commandNames';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useAppValue } from 'App/appStore';
+import CommandNames from 'Commands/CommandNames';
+import { useCommandExecuting, useExecuteCommand } from 'Commands/useCommands';
 import Alert from 'Components/Alert';
 import Icon from 'Components/Icon';
 import Label from 'Components/Label';
@@ -12,14 +12,13 @@ import ConfirmModal from 'Components/Modal/ConfirmModal';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import { icons, kinds } from 'Helpers/Props';
+import {
+  UpdateMechanism,
+  useGeneralSettings,
+} from 'Settings/General/useGeneralSettings';
 import useUpdateSettings from 'Settings/General/useUpdateSettings';
-import { executeCommand } from 'Store/Actions/commandActions';
-import { fetchGeneralSettings } from 'Store/Actions/settingsActions';
-import { fetchUpdates } from 'Store/Actions/systemActions';
-import createCommandExecutingSelector from 'Store/Selectors/createCommandExecutingSelector';
-import createSystemStatusSelector from 'Store/Selectors/createSystemStatusSelector';
-import createUISettingsSelector from 'Store/Selectors/createUISettingsSelector';
-import { UpdateMechanism } from 'typings/Settings/General';
+import { useUiSettingsValues } from 'Settings/UI/useUiSettings';
+import { useSystemStatusData } from 'System/Status/useSystemStatus';
 import formatDate from 'Utilities/Date/formatDate';
 import formatDateTime from 'Utilities/Date/formatDateTime';
 import translate from 'Utilities/String/translate';
@@ -30,15 +29,12 @@ import styles from './Updates.css';
 const VERSION_REGEX = /\d+\.\d+\.\d+\.\d+/i;
 
 function Updates() {
-  const currentVersion = useSelector((state: AppState) => state.app.version);
-  const { packageUpdateMechanismMessage } = useSelector(
-    createSystemStatusSelector()
-  );
-  const { shortDateFormat, longDateFormat, timeFormat } = useSelector(
-    createUISettingsSelector()
-  );
-  const isInstallingUpdate = useSelector(
-    createCommandExecutingSelector(commandNames.APPLICATION_UPDATE)
+  const currentVersion = useAppValue('version');
+  const { packageUpdateMechanismMessage } = useSystemStatusData();
+
+  const { shortDateFormat, longDateFormat, timeFormat } = useUiSettingsValues();
+  const isInstallingUpdate = useCommandExecuting(
+    CommandNames.ApplicationUpdate
   );
 
   const {
@@ -54,7 +50,7 @@ function Updates() {
     error: settingsError,
   } = useUpdateSettings();
 
-  const dispatch = useDispatch();
+  const executeCommand = useExecuteCommand();
   const [isMajorUpdateModalOpen, setIsMajorUpdateModalOpen] = useState(false);
   const isFetching = isLoadingUpdates || isLoadingSettings;
   const isPopulated = isUpdatesFetched && isSettingsFetched;
@@ -94,29 +90,24 @@ function Updates() {
     if (isMajorUpdate) {
       setIsMajorUpdateModalOpen(true);
     } else {
-      dispatch(executeCommand({ name: commandNames.APPLICATION_UPDATE }));
+      executeCommand({ name: CommandNames.ApplicationUpdate });
     }
-  }, [isMajorUpdate, setIsMajorUpdateModalOpen, dispatch]);
+  }, [isMajorUpdate, setIsMajorUpdateModalOpen, executeCommand]);
 
   const handleInstallLatestMajorVersionPress = useCallback(() => {
     setIsMajorUpdateModalOpen(false);
 
-    dispatch(
-      executeCommand({
-        name: commandNames.APPLICATION_UPDATE,
-        installMajorUpdate: true,
-      })
-    );
-  }, [setIsMajorUpdateModalOpen, dispatch]);
+    executeCommand({
+      name: CommandNames.ApplicationUpdate,
+      installMajorUpdate: true,
+    });
+  }, [setIsMajorUpdateModalOpen, executeCommand]);
 
   const handleCancelMajorVersionPress = useCallback(() => {
     setIsMajorUpdateModalOpen(false);
   }, [setIsMajorUpdateModalOpen]);
 
-  useEffect(() => {
-    dispatch(fetchUpdates());
-    dispatch(fetchGeneralSettings());
-  }, [dispatch]);
+  useGeneralSettings();
 
   return (
     <PageContent title={translate('Updates')}>

@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { QualityProfilesAppState } from 'App/State/SettingsAppState';
+import { useDebouncedCallback } from 'use-debounce';
 import Alert from 'Components/Alert';
 import Form from 'Components/Form/Form';
 import FormGroup from 'Components/Form/FormGroup';
 import FormInputGroup from 'Components/Form/FormInputGroup';
 import FormLabel from 'Components/Form/FormLabel';
+import Icon from 'Components/Icon';
 import Button from 'Components/Link/Button';
 import SpinnerErrorButton from 'Components/Link/SpinnerErrorButton';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
@@ -13,29 +13,26 @@ import ModalBody from 'Components/Modal/ModalBody';
 import ModalContent from 'Components/Modal/ModalContent';
 import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
+import Popover from 'Components/Tooltip/Popover';
 import useMeasure from 'Helpers/Hooks/useMeasure';
 import usePrevious from 'Helpers/Hooks/usePrevious';
-import { inputTypes, kinds, sizes } from 'Helpers/Props';
-import {
-  fetchQualityProfileSchema,
-  saveQualityProfile,
-  setQualityProfileValue,
-} from 'Store/Actions/settingsActions';
-import { createProviderSettingsSelectorHook } from 'Store/Selectors/createProviderSettingsSelector';
-import createQualityProfileInUseSelector from 'Store/Selectors/createQualityProfileInUseSelector';
+import { icons, inputTypes, kinds, sizes } from 'Helpers/Props';
+import useQualityProfileInUse from 'Settings/Profiles/Quality/useQualityProfileInUse';
 import dimensions from 'Styles/Variables/dimensions';
 import { InputChanged } from 'typings/inputs';
-import QualityProfile, {
-  QualityProfileGroup,
-  QualityProfileQualityItem,
-} from 'typings/QualityProfile';
 import translate from 'Utilities/String/translate';
 import QualityProfileFormatItems from './QualityProfileFormatItems';
 import { DragMoveState } from './QualityProfileItemDragSource';
+import { parseItemFailures } from './qualityProfileItemFailures';
 import QualityProfileItems, {
   EditQualityProfileMode,
 } from './QualityProfileItems';
 import { SizeChanged } from './QualityProfileItemSize';
+import {
+  QualityProfileGroup,
+  QualityProfileQualityItem,
+  useManageQualityProfile,
+} from './useQualityProfiles';
 import styles from './EditQualityProfileModalContent.css';
 
 const MODAL_BODY_PADDING = parseInt(dimensions.modalBodyPadding);
@@ -52,6 +49,7 @@ function parseIndex(index: string): [number | null, number] {
 
 interface EditQualityProfileModalContentProps {
   id?: number;
+  cloneId?: number;
   onContentHeightChange: (height: number) => void;
   onDeleteQualityProfilePress?: () => void;
   onModalClose: () => void;
@@ -59,21 +57,31 @@ interface EditQualityProfileModalContentProps {
 
 function EditQualityProfileModalContent({
   id,
+  cloneId,
   onContentHeightChange,
   onDeleteQualityProfilePress,
   onModalClose,
 }: EditQualityProfileModalContentProps) {
-  const dispatch = useDispatch();
+  const {
+    item,
+    isSaving,
+    saveError,
+    isSchemaLoading,
+    isSchemaFetched,
+    schemaError,
+    updateValue,
+    saveProvider,
+    validationErrors,
+    validationWarnings,
+  } = useManageQualityProfile(id, cloneId);
 
-  const { error, isFetching, isPopulated, isSaving, saveError, item } =
-    useSelector(
-      createProviderSettingsSelectorHook<
-        QualityProfile,
-        QualityProfilesAppState
-      >('qualityProfiles', id)
-    );
+  const itemFailures = useMemo(
+    () => parseItemFailures(validationErrors, validationWarnings),
+    [validationErrors, validationWarnings]
+  );
 
-  const isInUse = useSelector(createQualityProfileInUseSelector(id));
+  const { seriesCount, importListCount } = useQualityProfileInUse(id);
+  const isInUse = seriesCount !== 0 || importListCount !== 0;
 
   const [measureHeaderRef, { height: headerHeight }] = useMeasure();
   const [measureBodyRef, { height: bodyHeight }] = useMeasure();
@@ -132,15 +140,15 @@ function EditQualityProfileModalContent({
 
   const handleInputChange = useCallback(
     ({ name, value }: InputChanged) => {
-      // @ts-expect-error - actions are not typed
-      dispatch(setQualityProfileValue({ name, value }));
+      // @ts-expect-error - change is not yet typed
+      updateValue(name, value);
     },
-    [dispatch]
+    [updateValue]
   );
 
   const handleSavePress = useCallback(() => {
-    dispatch(saveQualityProfile({ id }));
-  }, [id, dispatch]);
+    saveProvider();
+  }, [saveProvider]);
 
   const handleCutoffChange = useCallback(
     ({ name, value }: InputChanged<number>) => {
@@ -153,10 +161,10 @@ function EditQualityProfileModalContent({
           'id' in cutoffItem ? cutoffItem.id : cutoffItem.quality.id;
 
         // @ts-expect-error - actions are not typed
-        dispatch(setQualityProfileValue({ name, value: cutoffId }));
+        updateValue(name, cutoffId);
       }
     },
-    [items, dispatch]
+    [items, updateValue]
   );
 
   const handleItemAllowedChange = useCallback(
@@ -172,15 +180,9 @@ function EditQualityProfileModalContent({
         return item;
       });
 
-      dispatch(
-        // @ts-expect-error - actions are not typed
-        setQualityProfileValue({
-          name: 'items',
-          value: newItems,
-        })
-      );
+      updateValue('items', newItems);
     },
-    [items, dispatch]
+    [items, updateValue]
   );
 
   const handleGroupAllowedChange = useCallback(
@@ -196,15 +198,9 @@ function EditQualityProfileModalContent({
         return item;
       });
 
-      dispatch(
-        // @ts-expect-error - actions are not typed
-        setQualityProfileValue({
-          name: 'items',
-          value: newItems,
-        })
-      );
+      updateValue('items', newItems);
     },
-    [items, dispatch]
+    [items, updateValue]
   );
 
   const handleGroupNameChange = useCallback(
@@ -220,10 +216,9 @@ function EditQualityProfileModalContent({
         return item;
       });
 
-      // @ts-expect-error - actions are not typed
-      dispatch(setQualityProfileValue({ name: 'items', value: newItems }));
+      updateValue('items', newItems);
     },
-    [items, dispatch]
+    [items, updateValue]
   );
 
   const handleSizeChange = useCallback(
@@ -253,15 +248,9 @@ function EditQualityProfileModalContent({
         };
       });
 
-      dispatch(
-        // @ts-expect-error - actions are not typed
-        setQualityProfileValue({
-          name: 'items',
-          value: newItems,
-        })
-      );
+      updateValue('items', newItems);
     },
-    [items, dispatch]
+    [items, updateValue]
   );
 
   const handleCreateGroupPress = useCallback(
@@ -288,10 +277,9 @@ function EditQualityProfileModalContent({
         return item;
       });
 
-      // @ts-expect-error - actions are not typed
-      dispatch(setQualityProfileValue({ name: 'items', value: newItems }));
+      updateValue('items', newItems);
     },
-    [items, dispatch]
+    [items, updateValue]
   );
 
   const handleDeleteGroupPress = useCallback(
@@ -303,15 +291,15 @@ function EditQualityProfileModalContent({
           } else {
             acc.push(item as QualityProfileQualityItem);
           }
+
           return acc;
         },
         []
       );
 
-      // @ts-expect-error - actions are not typed
-      dispatch(setQualityProfileValue({ name: 'items', value: newItems }));
+      updateValue('items', newItems);
     },
-    [items, dispatch]
+    [items, updateValue]
   );
 
   const handleDragMove = useCallback((options: DragMoveState) => {
@@ -443,13 +431,7 @@ function EditQualityProfileModalContent({
           dropGroup.items.splice(dropItemIndex, 0, item);
         }
 
-        dispatch(
-          // @ts-expect-error - actions are not typed
-          setQualityProfileValue({
-            name: 'items',
-            value: newItems,
-          })
-        );
+        updateValue('items', newItems);
       }
 
       setDndState({
@@ -458,14 +440,14 @@ function EditQualityProfileModalContent({
         dropPosition: null,
       });
     },
-    [dragQualityIndex, dropQualityIndex, items, dispatch]
+    [dragQualityIndex, dropQualityIndex, items, updateValue]
   );
 
   const handleChangeMode = useCallback((newMode: EditQualityProfileMode) => {
     setMode(newMode);
   }, []);
 
-  const handleFormatItemScoreChange = useCallback(
+  const handleFormatItemScoreChange = useDebouncedCallback(
     (formatId: number, score: number) => {
       const newFormatItems = formatItems.value.map((formatItem) => {
         if (formatItem.format === formatId) {
@@ -478,15 +460,9 @@ function EditQualityProfileModalContent({
         return formatItem;
       });
 
-      dispatch(
-        // @ts-expect-error - actions are not typed
-        setQualityProfileValue({
-          name: 'formatItems',
-          value: newFormatItems,
-        })
-      );
+      updateValue('formatItems', newFormatItems);
     },
-    [formatItems, dispatch]
+    1000
   );
 
   useEffect(() => {
@@ -524,12 +500,6 @@ function EditQualityProfileModalContent({
   }, [bodyHeight, mode]);
 
   useEffect(() => {
-    if (!id && !isPopulated) {
-      dispatch(fetchQualityProfileSchema());
-    }
-  }, [id, isPopulated, dispatch]);
-
-  useEffect(() => {
     if (wasSaving && !isSaving && !saveError) {
       onModalClose();
     }
@@ -554,11 +524,10 @@ function EditQualityProfileModalContent({
         cutoffId =
           'id' in firstAllowed ? firstAllowed.id : firstAllowed.quality.id;
 
-        // @ts-expect-error - actions are not typed
-        dispatch(setQualityProfileValue({ name: 'cutoff', value: cutoffId }));
+        updateValue('cutoff', cutoffId);
       }
     }
-  }, [cutoff, items, dispatch]);
+  }, [cutoff, items, updateValue]);
 
   return (
     <ModalContent onModalClose={onModalClose}>
@@ -568,15 +537,15 @@ function EditQualityProfileModalContent({
 
       <ModalBody>
         <div ref={measureBodyRef}>
-          {isPopulated ? null : <LoadingIndicator />}
+          {isSchemaFetched ? null : <LoadingIndicator />}
 
-          {!isFetching && error ? (
+          {!isSchemaLoading && schemaError ? (
             <Alert kind={kinds.DANGER}>
               {translate('AddQualityProfileError')}
             </Alert>
           ) : null}
 
-          {isPopulated && !error ? (
+          {isSchemaFetched && !schemaError ? (
             <Form>
               <div className={styles.formGroupsContainer}>
                 <div className={styles.formGroupWrapper}>
@@ -695,6 +664,7 @@ function EditQualityProfileModalContent({
                     qualityProfileItems={items.value}
                     errors={items.errors}
                     warnings={items.warnings}
+                    itemFailures={itemFailures}
                     dragQualityIndex={dragQualityIndex}
                     dropQualityIndex={dropQualityIndex}
                     dropPosition={dropPosition}
@@ -743,6 +713,36 @@ function EditQualityProfileModalContent({
             >
               {translate('Delete')}
             </Button>
+
+            {isInUse ? (
+              <Popover
+                title={translate('QualityProfileUsage')}
+                body={
+                  <div>
+                    {seriesCount ? (
+                      <div>
+                        {translate('QualityProfileUsedInCountSeries', {
+                          count: seriesCount,
+                        })}
+                      </div>
+                    ) : null}
+                    {importListCount ? (
+                      <div>
+                        {translate('QualityProfileUsedInCountImportLists', {
+                          count: importListCount,
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
+                }
+                anchor={
+                  <Icon
+                    className={styles.deleteButtonInfoIcon}
+                    name={icons.INFO}
+                  />
+                }
+              />
+            ) : null}
           </div>
         ) : null}
 

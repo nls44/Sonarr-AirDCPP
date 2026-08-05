@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import * as commandNames from 'Commands/commandNames';
+import CommandNames from 'Commands/CommandNames';
+import { useCommandExecuting } from 'Commands/useCommands';
 import Alert from 'Components/Alert';
 import Form from 'Components/Form/Form';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
@@ -10,16 +10,8 @@ import PageContentBody from 'Components/Page/PageContentBody';
 import usePrevious from 'Helpers/Hooks/usePrevious';
 import { kinds } from 'Helpers/Props';
 import SettingsToolbar from 'Settings/SettingsToolbar';
-import { clearPendingChanges } from 'Store/Actions/baseActions';
-import {
-  fetchGeneralSettings,
-  saveGeneralSettings,
-  setGeneralSettingsValue,
-} from 'Store/Actions/settingsActions';
-import { restart } from 'Store/Actions/systemActions';
-import createCommandExecutingSelector from 'Store/Selectors/createCommandExecutingSelector';
-import createSettingsSectionSelector from 'Store/Selectors/createSettingsSectionSelector';
-import useIsWindowsService from 'System/useIsWindowsService';
+import { useIsWindowsService } from 'System/Status/useSystemStatus';
+import { useRestart } from 'System/useSystem';
 import { InputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
 import AnalyticSettings from './AnalyticSettings';
@@ -29,8 +21,7 @@ import LoggingSettings from './LoggingSettings';
 import ProxySettings from './ProxySettings';
 import SecuritySettings from './SecuritySettings';
 import UpdateSettings from './UpdateSettings';
-
-const SECTION = 'general';
+import { useManageGeneralSettings } from './useGeneralSettings';
 
 const requiresRestartKeys = [
   'bindAddress',
@@ -44,25 +35,24 @@ const requiresRestartKeys = [
 ];
 
 function GeneralSettings() {
-  const dispatch = useDispatch();
   const isWindowsService = useIsWindowsService();
-  const isResettingApiKey = useSelector(
-    createCommandExecutingSelector(commandNames.RESET_API_KEY)
-  );
+  const { mutate: restart } = useRestart();
+  const isResettingApiKey = useCommandExecuting(CommandNames.ResetApiKey);
 
   const {
-    isFetching,
-    isPopulated,
-    isSaving,
-    error,
-    saveError,
     settings,
-    hasSettings,
+    isFetching,
+    isFetched,
+    error,
+    updateSetting,
+    saveSettings,
+    isSaving,
+    saveError,
     hasPendingChanges,
     pendingChanges,
     validationErrors,
     validationWarnings,
-  } = useSelector(createSettingsSectionSelector(SECTION));
+  } = useManageGeneralSettings();
 
   const wasResettingApiKey = usePrevious(isResettingApiKey);
   const wasSaving = usePrevious(isSaving);
@@ -73,38 +63,24 @@ function GeneralSettings() {
 
   const handleInputChange = useCallback(
     (change: InputChanged) => {
-      // @ts-expect-error - actions aren't typed
-      dispatch(setGeneralSettingsValue(change));
+      // @ts-expect-error input change events aren't typed
+      updateSetting(change.name, change.value);
     },
-    [dispatch]
+    [updateSetting]
   );
 
   const handleSavePress = useCallback(() => {
-    dispatch(saveGeneralSettings());
-  }, [dispatch]);
+    saveSettings();
+  }, [saveSettings]);
 
   const handleConfirmRestart = useCallback(() => {
     setIsRestartRequiredModalOpen(false);
-    dispatch(restart());
-  }, [dispatch]);
+    restart();
+  }, [restart]);
 
   const handleCloseRestartRequiredModalOpen = useCallback(() => {
     setIsRestartRequiredModalOpen(false);
   }, []);
-
-  useEffect(() => {
-    dispatch(fetchGeneralSettings());
-
-    return () => {
-      dispatch(clearPendingChanges({ section: `settings.${SECTION}` }));
-    };
-  }, [dispatch]);
-
-  useEffect(() => {
-    if (!isResettingApiKey && wasResettingApiKey) {
-      dispatch(fetchGeneralSettings());
-    }
-  }, [isResettingApiKey, wasResettingApiKey, dispatch]);
 
   useEffect(() => {
     const isRestartedRequired =
@@ -133,7 +109,7 @@ function GeneralSettings() {
       />
 
       <PageContentBody>
-        {isFetching && !isPopulated ? <LoadingIndicator /> : null}
+        {isFetching && !isFetched ? <LoadingIndicator /> : null}
 
         {!isFetching && error ? (
           <Alert kind={kinds.DANGER}>
@@ -141,7 +117,7 @@ function GeneralSettings() {
           </Alert>
         ) : null}
 
-        {hasSettings && isPopulated && !error ? (
+        {settings && isFetched && !error ? (
           <Form
             id="generalSettings"
             validationErrors={validationErrors}
@@ -156,6 +132,7 @@ function GeneralSettings() {
               enableSsl={settings.enableSsl}
               sslPort={settings.sslPort}
               sslCertPath={settings.sslCertPath}
+              sslKeyPath={settings.sslKeyPath}
               sslCertPassword={settings.sslCertPassword}
               launchBrowser={settings.launchBrowser}
               onInputChange={handleInputChange}

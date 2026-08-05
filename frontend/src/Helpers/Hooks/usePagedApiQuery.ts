@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { PropertyFilter } from 'App/State/AppState';
+import { PropertyFilter } from 'Filters/Filter';
 import { SortDirection } from 'Helpers/Props/sortDirections';
 import fetchJson from 'Utilities/Fetch/fetchJson';
 import getQueryPath from 'Utilities/Fetch/getQueryPath';
@@ -15,7 +15,7 @@ interface PagedQueryOptions<T> extends QueryOptions<PagedQueryResponse<T>> {
   filters?: PropertyFilter[];
 }
 
-interface PagedQueryResponse<T> {
+export interface PagedQueryResponse<T> {
   page: number;
   pageSize: number;
   sortKey: string;
@@ -25,8 +25,10 @@ interface PagedQueryResponse<T> {
   records: T[];
 }
 
+const DEFAULT_RECORDS: never[] = [];
+
 const usePagedApiQuery = <T>(options: PagedQueryOptions<T>) => {
-  const requestOptions = useMemo(() => {
+  const { requestOptions, queryKey } = useMemo(() => {
     const {
       path,
       page,
@@ -40,27 +42,39 @@ const usePagedApiQuery = <T>(options: PagedQueryOptions<T>) => {
     } = options;
 
     return {
-      ...otherOptions,
-      path:
-        getQueryPath(path) +
-        getQueryString({
-          ...queryParams,
-          page,
-          pageSize,
-          sortKey,
-          sortDirection,
-          filters,
-        }),
-      headers: {
-        ...options.headers,
-        'X-Api-Key': window.Sonarr.apiKey,
+      queryKey: [
+        path,
+        queryParams,
+        page,
+        pageSize,
+        sortKey,
+        sortDirection,
+        filters,
+      ],
+      requestOptions: {
+        ...otherOptions,
+        path:
+          getQueryPath(path) +
+          getQueryString({
+            ...queryParams,
+            page,
+            pageSize,
+            sortKey,
+            sortDirection,
+            filters,
+          }),
+        headers: {
+          ...options.headers,
+          'X-Api-Key': window.Sonarr.apiKey,
+          'X-Sonarr-Client': 'Sonarr',
+        },
       },
     };
   }, [options]);
 
-  return useQuery({
+  const { data, ...query } = useQuery({
     ...options.queryOptions,
-    queryKey: [requestOptions.path],
+    queryKey,
     queryFn: async ({ signal }) => {
       const response = await fetchJson<PagedQueryResponse<T>, unknown>({
         ...requestOptions,
@@ -75,7 +89,16 @@ const usePagedApiQuery = <T>(options: PagedQueryOptions<T>) => {
         ),
       };
     },
+    placeholderData: keepPreviousData,
   });
+
+  return {
+    ...query,
+    queryKey,
+    records: data?.records ?? DEFAULT_RECORDS,
+    totalRecords: data?.totalRecords ?? 0,
+    totalPages: data?.totalPages ?? 0,
+  };
 };
 
 export default usePagedApiQuery;

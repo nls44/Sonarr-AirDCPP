@@ -1,14 +1,12 @@
 import React, { useCallback, useState } from 'react';
-import { useDispatch } from 'react-redux';
 import Card from 'Components/Card';
 import Label from 'Components/Label';
 import ConfirmModal from 'Components/Modal/ConfirmModal';
 import TagList from 'Components/TagList';
 import { kinds } from 'Helpers/Props';
-import { deleteNotification } from 'Store/Actions/settingsActions';
-import useTags from 'Tags/useTags';
-import NotificationModel from 'typings/Notification';
+import { useTagList } from 'Tags/useTags';
 import translate from 'Utilities/String/translate';
+import { NotificationModel, useDeleteConnection } from '../useConnections';
 import EditNotificationModal from './EditNotificationModal';
 import styles from './Notification.css';
 
@@ -43,8 +41,8 @@ function Notification({
   supportsOnManualInteractionRequired,
   tags,
 }: NotificationModel) {
-  const dispatch = useDispatch();
-  const tagList = useTags();
+  const tagList = useTagList();
+  const { deleteConnection } = useDeleteConnection(id);
 
   const [isEditNotificationModalOpen, setIsEditNotificationModalOpen] =
     useState(false);
@@ -69,13 +67,14 @@ function Notification({
   }, []);
 
   const handleConfirmDeleteNotification = useCallback(() => {
-    dispatch(deleteNotification({ id }));
-  }, [id, dispatch]);
+    deleteConnection();
+  }, [deleteConnection]);
 
   return (
     <Card
       className={styles.notification}
       overlayContent={true}
+      aria-label={translate('EditConnectionName', { name })}
       onPress={handleEditNotificationPress}
     >
       <div className={styles.name}>{name}</div>

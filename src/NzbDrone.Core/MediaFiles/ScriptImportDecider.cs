@@ -142,7 +142,7 @@ namespace NzbDrone.Core.MediaFiles
             environmentVariables.Add("Sonarr_Series_Type", series.SeriesType.ToString());
             environmentVariables.Add("Sonarr_Series_OriginalLanguage", IsoLanguages.Get(series.OriginalLanguage).ThreeLetterCode);
             environmentVariables.Add("Sonarr_Series_Genres", string.Join("|", series.Genres));
-            environmentVariables.Add("Sonarr_Series_Tags", string.Join("|", series.Tags.Select(t => _tagRepository.Get(t).Label)));
+            environmentVariables.Add("Sonarr_Series_Tags", string.Join("|", _tagRepository.GetTags(series.Tags).Select(t => t.Label)));
 
             environmentVariables.Add("Sonarr_EpisodeFile_EpisodeCount", localEpisode.Episodes.Count.ToString());
             environmentVariables.Add("Sonarr_EpisodeFile_EpisodeIds", string.Join(",", localEpisode.Episodes.Select(e => e.Id)));
@@ -160,15 +160,31 @@ namespace NzbDrone.Core.MediaFiles
             environmentVariables.Add("Sonarr_Download_Client", downloadClientInfo?.Name ?? string.Empty);
             environmentVariables.Add("Sonarr_Download_Client_Type", downloadClientInfo?.Type ?? string.Empty);
             environmentVariables.Add("Sonarr_Download_Id", downloadId ?? string.Empty);
-            environmentVariables.Add("Sonarr_EpisodeFile_MediaInfo_AudioChannels", MediaInfoFormatter.FormatAudioChannels(localEpisode.MediaInfo).ToString());
-            environmentVariables.Add("Sonarr_EpisodeFile_MediaInfo_AudioCodec", MediaInfoFormatter.FormatAudioCodec(localEpisode.MediaInfo, null));
-            environmentVariables.Add("Sonarr_EpisodeFile_MediaInfo_AudioLanguages", localEpisode.MediaInfo.AudioLanguages.Distinct().ConcatToString(" / "));
-            environmentVariables.Add("Sonarr_EpisodeFile_MediaInfo_Languages", localEpisode.MediaInfo.AudioLanguages.ConcatToString(" / "));
-            environmentVariables.Add("Sonarr_EpisodeFile_MediaInfo_Height", localEpisode.MediaInfo.Height.ToString());
-            environmentVariables.Add("Sonarr_EpisodeFile_MediaInfo_Width", localEpisode.MediaInfo.Width.ToString());
-            environmentVariables.Add("Sonarr_EpisodeFile_MediaInfo_Subtitles", localEpisode.MediaInfo.Subtitles.ConcatToString(" / "));
-            environmentVariables.Add("Sonarr_EpisodeFile_MediaInfo_VideoCodec", MediaInfoFormatter.FormatVideoCodec(localEpisode.MediaInfo, null));
-            environmentVariables.Add("Sonarr_EpisodeFile_MediaInfo_VideoDynamicRangeType", MediaInfoFormatter.FormatVideoDynamicRangeType(localEpisode.MediaInfo));
+
+            if (localEpisode.MediaInfo == null)
+            {
+                _logger.Trace("MediaInfo is null for episode file import. This may cause issues with the import script.");
+            }
+            else
+            {
+                environmentVariables.Add("Sonarr_EpisodeFile_MediaInfo_AudioChannels",
+                    MediaInfoFormatter.FormatAudioChannels(localEpisode.MediaInfo.PrimaryAudioStream).ToString());
+                environmentVariables.Add("Sonarr_EpisodeFile_MediaInfo_AudioCodec",
+                    MediaInfoFormatter.FormatAudioCodec(localEpisode.MediaInfo.PrimaryAudioStream, null));
+                environmentVariables.Add("Sonarr_EpisodeFile_MediaInfo_AudioLanguages",
+                    localEpisode.MediaInfo.AudioStreams?.Select(l => l.Language).Distinct().ConcatToString(" / "));
+                environmentVariables.Add("Sonarr_EpisodeFile_MediaInfo_Languages",
+                    localEpisode.MediaInfo.AudioStreams?.Select(l => l.Language).ConcatToString(" / "));
+                environmentVariables.Add("Sonarr_EpisodeFile_MediaInfo_Height",
+                    localEpisode.MediaInfo.Height.ToString());
+                environmentVariables.Add("Sonarr_EpisodeFile_MediaInfo_Width", localEpisode.MediaInfo.Width.ToString());
+                environmentVariables.Add("Sonarr_EpisodeFile_MediaInfo_Subtitles",
+                    localEpisode.MediaInfo.SubtitleStreams?.Select(l => l.Language).ConcatToString(" / "));
+                environmentVariables.Add("Sonarr_EpisodeFile_MediaInfo_VideoCodec",
+                    MediaInfoFormatter.FormatVideoCodec(localEpisode.MediaInfo, null));
+                environmentVariables.Add("Sonarr_EpisodeFile_MediaInfo_VideoDynamicRangeType",
+                    MediaInfoFormatter.FormatVideoDynamicRangeType(localEpisode.MediaInfo));
+            }
 
             environmentVariables.Add("Sonarr_EpisodeFile_CustomFormat", string.Join("|", localEpisode.CustomFormats));
             environmentVariables.Add("Sonarr_EpisodeFile_CustomFormatScore", localEpisode.CustomFormatScore.ToString());

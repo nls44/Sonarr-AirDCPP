@@ -1,13 +1,12 @@
 import React, { useCallback } from 'react';
-import { useDispatch } from 'react-redux';
+import Card from 'Components/Card';
 import Button from 'Components/Link/Button';
-import Link from 'Components/Link/Link';
 import Menu from 'Components/Menu/Menu';
 import MenuContent from 'Components/Menu/MenuContent';
 import { sizes } from 'Helpers/Props';
-import { selectIndexerSchema } from 'Store/Actions/settingsActions';
-import Indexer from 'typings/Indexer';
+import { SelectedSchema } from 'Settings/useProviderSchema';
 import translate from 'Utilities/String/translate';
+import { IndexerModel } from '../useIndexers';
 import AddIndexerPresetMenuItem from './AddIndexerPresetMenuItem';
 import styles from './AddIndexerItem.css';
 
@@ -15,8 +14,8 @@ interface AddIndexerItemProps {
   implementation: string;
   implementationName: string;
   infoLink: string;
-  presets?: Indexer[];
-  onIndexerSelect: () => void;
+  presets?: IndexerModel[];
+  onIndexerSelect: (selectedSchema: SelectedSchema) => void;
 }
 
 function AddIndexerItem({
@@ -26,62 +25,56 @@ function AddIndexerItem({
   presets,
   onIndexerSelect,
 }: AddIndexerItemProps) {
-  const dispatch = useDispatch();
   const hasPresets = !!presets && !!presets.length;
 
   const handleIndexerSelect = useCallback(() => {
-    dispatch(
-      selectIndexerSchema({
-        implementation,
-        implementationName,
-      })
-    );
-
-    onIndexerSelect();
-  }, [implementation, implementationName, dispatch, onIndexerSelect]);
+    onIndexerSelect({ implementation, implementationName });
+  }, [implementation, implementationName, onIndexerSelect]);
 
   return (
-    <div className={styles.indexer}>
-      <Link className={styles.underlay} onPress={handleIndexerSelect} />
+    <Card
+      className={styles.indexer}
+      overlayClassName={styles.overlay}
+      overlayContent={true}
+      aria-label={translate('AddIndexerImplementation', { implementationName })}
+      onPress={handleIndexerSelect}
+    >
+      <div className={styles.name}>{implementationName}</div>
 
-      <div className={styles.overlay}>
-        <div className={styles.name}>{implementationName}</div>
+      <div className={styles.actions}>
+        {hasPresets && (
+          <span>
+            <Button size={sizes.SMALL} onPress={handleIndexerSelect}>
+              {translate('Custom')}
+            </Button>
 
-        <div className={styles.actions}>
-          {hasPresets && (
-            <span>
-              <Button size={sizes.SMALL} onPress={handleIndexerSelect}>
-                {translate('Custom')}
+            <Menu className={styles.presetsMenu}>
+              <Button className={styles.presetsMenuButton} size={sizes.SMALL}>
+                {translate('Presets')}
               </Button>
 
-              <Menu className={styles.presetsMenu}>
-                <Button className={styles.presetsMenuButton} size={sizes.SMALL}>
-                  {translate('Presets')}
-                </Button>
+              <MenuContent>
+                {presets.map((preset) => {
+                  return (
+                    <AddIndexerPresetMenuItem
+                      key={preset.name}
+                      name={preset.name}
+                      implementation={implementation}
+                      implementationName={implementationName}
+                      onPress={onIndexerSelect}
+                    />
+                  );
+                })}
+              </MenuContent>
+            </Menu>
+          </span>
+        )}
 
-                <MenuContent>
-                  {presets.map((preset) => {
-                    return (
-                      <AddIndexerPresetMenuItem
-                        key={preset.name}
-                        name={preset.name}
-                        implementation={implementation}
-                        implementationName={implementationName}
-                        onPress={onIndexerSelect}
-                      />
-                    );
-                  })}
-                </MenuContent>
-              </Menu>
-            </span>
-          )}
-
-          <Button to={infoLink} size={sizes.SMALL}>
-            {translate('MoreInfo')}
-          </Button>
-        </div>
+        <Button to={infoLink} size={sizes.SMALL}>
+          {translate('MoreInfo')}
+        </Button>
       </div>
-    </div>
+    </Card>
   );
 }
 

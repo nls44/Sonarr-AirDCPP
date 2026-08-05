@@ -1,7 +1,6 @@
 import { uniq } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
-import { useSelector } from 'react-redux';
-import { Tag } from 'App/State/TagsAppState';
+import { useSelect } from 'App/Select/SelectContext';
 import Form from 'Components/Form/Form';
 import FormGroup from 'Components/Form/FormGroup';
 import FormInputGroup from 'Components/Form/FormInputGroup';
@@ -15,39 +14,38 @@ import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import { inputTypes, kinds, sizes } from 'Helpers/Props';
 import Series from 'Series/Series';
-import createAllSeriesSelector from 'Store/Selectors/createAllSeriesSelector';
-import createTagsSelector from 'Store/Selectors/createTagsSelector';
+import { useMultipleSeries } from 'Series/useSeries';
+import { useTagList } from 'Tags/useTags';
 import translate from 'Utilities/String/translate';
 import styles from './TagsModalContent.css';
 
-interface TagsModalContentProps {
-  seriesIds: number[];
+export interface TagsModalContentProps {
   onApplyTagsPress: (tags: number[], applyTags: string) => void;
   onModalClose: () => void;
 }
 
-function TagsModalContent(props: TagsModalContentProps) {
-  const { seriesIds, onModalClose, onApplyTagsPress } = props;
-
-  const allSeries: Series[] = useSelector(createAllSeriesSelector());
-  const tagList: Tag[] = useSelector(createTagsSelector());
-
+function TagsModalContent({
+  onModalClose,
+  onApplyTagsPress,
+}: TagsModalContentProps) {
+  const tagList = useTagList();
   const [tags, setTags] = useState<number[]>([]);
   const [applyTags, setApplyTags] = useState('add');
+  const { useSelectedIds } = useSelect<Series>();
+  const seriesIds = useSelectedIds();
+  const selectedSeries = useMultipleSeries(seriesIds);
 
   const seriesTags = useMemo(() => {
-    const tags = seriesIds.reduce((acc: number[], id) => {
-      const s = allSeries.find((s) => s.id === id);
-
-      if (s) {
-        acc.push(...s.tags);
+    const tags = selectedSeries.reduce((acc: number[], series) => {
+      if (series) {
+        acc.push(...series.tags);
       }
 
       return acc;
     }, []);
 
     return uniq(tags);
-  }, [seriesIds, allSeries]);
+  }, [selectedSeries]);
 
   const onTagsChange = useCallback(
     ({ value }: { value: number[] }) => {

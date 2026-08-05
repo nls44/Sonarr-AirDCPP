@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using NLog;
 using NzbDrone.Common.Cloud;
+using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.DataAugmentation.DailySeries;
@@ -106,6 +107,11 @@ namespace NzbDrone.Core.MetadataSource.SkyHook
 
         public List<Series> SearchForNewSeries(string title)
         {
+            if (title.IsPathValid(PathValidationType.AnyOs))
+            {
+                throw new InvalidSearchTermException("Invalid search term '{0}'", title);
+            }
+
             try
             {
                 var lowerTitle = title.ToLowerInvariant();
@@ -233,6 +239,7 @@ namespace NzbDrone.Core.MetadataSource.SkyHook
             series.Status = MapSeriesStatus(show.Status);
             series.Ratings = MapRatings(show.Rating);
             series.Genres = show.Genres;
+            series.OriginalCountry = show.OriginalCountry;
 
             if (show.ContentRating.IsNotNullOrWhiteSpace())
             {

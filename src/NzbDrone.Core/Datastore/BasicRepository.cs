@@ -1,13 +1,18 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.SQLite;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using Dapper;
+using NLog;
+using NzbDrone.Common.Instrumentation;
 using NzbDrone.Core.Datastore.Events;
 using NzbDrone.Core.Messaging.Events;
+using Polly;
+using Polly.Retry;
 
 namespace NzbDrone.Core.Datastore
 {
@@ -40,11 +45,30 @@ namespace NzbDrone.Core.Datastore
     public class BasicRepository<TModel> : IBasicRepository<TModel>
         where TModel : ModelBase, new()
     {
+        private static readonly ILogger Logger = NzbDroneLogger.GetLogger(typeof(BasicRepository<TModel>));
+
         private readonly IEventAggregator _eventAggregator;
         private readonly PropertyInfo _keyProperty;
         private readonly List<PropertyInfo> _properties;
         private readonly string _updateSql;
         private readonly string _insertSql;
+
+        private static ResiliencePipeline RetryStrategy => new ResiliencePipelineBuilder()
+            .AddRetry(new RetryStrategyOptions
+            {
+                ShouldHandle = new PredicateBuilder().Handle<SQLiteException>(ex => ex.ResultCode == SQLiteErrorCode.Busy),
+                Delay = TimeSpan.FromMilliseconds(100),
+                MaxRetryAttempts = 3,
+                BackoffType = DelayBackoffType.Exponential,
+                UseJitter = true,
+                OnRetry = args =>
+                {
+                    Logger.Warn(args.Outcome.Exception, "Failed writing to database. Retry #{0}", args.AttemptNumber);
+
+                    return default;
+                }
+            })
+            .Build();
 
         protected readonly IDatabase _database;
         protected readonly string _table;
@@ -186,7 +210,9 @@ namespace NzbDrone.Core.Datastore
         private TModel Insert(IDbConnection connection, IDbTransaction transaction, TModel model)
         {
             SqlBuilderExtensions.LogQuery(_insertSql, model);
-            var multi = connection.QueryMultiple(_insertSql, model, transaction);
+
+            var multi = RetryStrategy.Execute(static (state, _) => state.connection.QueryMultiple(state._insertSql, state.model, state.transaction), (connection, _insertSql, model, transaction));
+
             var multiRead = multi.Read();
             var id = (int)(multiRead.First().id ?? multiRead.First().Id);
             _keyProperty.SetValue(model, id);
@@ -240,8 +266,10 @@ namespace NzbDrone.Core.Datastore
             }
 
             using (var conn = _database.OpenConnection())
+            using (var tran = conn.BeginTransaction(IsolationLevel.ReadCommitted))
             {
-                UpdateFields(conn, null, models, _properties);
+                UpdateFields(conn, tran, models, _properties);
+                tran.Commit();
             }
         }
 
@@ -345,8 +373,10 @@ namespace NzbDrone.Core.Datastore
             var propertiesToUpdate = properties.Select(x => x.GetMemberName()).ToList();
 
             using (var conn = _database.OpenConnection())
+            using (var tran = conn.BeginTransaction(IsolationLevel.ReadCommitted))
             {
-                UpdateFields(conn, null, models, propertiesToUpdate);
+                UpdateFields(conn, tran, models, propertiesToUpdate);
+                tran.Commit();
             }
 
             foreach (var model in models)
@@ -381,7 +411,7 @@ namespace NzbDrone.Core.Datastore
 
             SqlBuilderExtensions.LogQuery(sql, model);
 
-            connection.Execute(sql, model, transaction: transaction);
+            RetryStrategy.Execute(static (state, _) => state.connection.Execute(state.sql, state.model, transaction: state.transaction), (connection, sql, model, transaction));
         }
 
         private void UpdateFields(IDbConnection connection, IDbTransaction transaction, IList<TModel> models, List<PropertyInfo> propertiesToUpdate)
@@ -393,7 +423,7 @@ namespace NzbDrone.Core.Datastore
                 SqlBuilderExtensions.LogQuery(sql, model);
             }
 
-            connection.Execute(sql, models, transaction: transaction);
+            RetryStrategy.Execute(static (state, _) => state.connection.Execute(state.sql, state.models, transaction: state.transaction), (connection, sql, models, transaction));
         }
 
         protected virtual SqlBuilder PagedBuilder() => Builder();
@@ -417,7 +447,7 @@ namespace NzbDrone.Core.Datastore
             }
         }
 
-        protected List<TModel> GetPagedRecords(SqlBuilder builder, PagingSpec<TModel> pagingSpec, Func<SqlBuilder, IEnumerable<TModel>> queryFunc)
+        protected List<TModel> GetPagedRecords(SqlBuilder builder, PagingSpec<TModel> pagingSpec, Func<SqlBuilder, IEnumerable<TModel>> queryFunc, string customSortExpression = null)
         {
             AddFilters(builder, pagingSpec);
 
@@ -426,9 +456,17 @@ namespace NzbDrone.Core.Datastore
                 pagingSpec.SortKey = $"{_table}.{_keyProperty.Name}";
             }
 
-            var sortKey = TableMapping.Mapper.GetSortKey(pagingSpec.SortKey);
             var sortDirection = pagingSpec.SortDirection == SortDirection.Descending ? "DESC" : "ASC";
             var pagingOffset = Math.Max(pagingSpec.Page - 1, 0) * pagingSpec.PageSize;
+
+            if (customSortExpression != null)
+            {
+                builder.OrderBy($"{customSortExpression} {sortDirection} LIMIT {pagingSpec.PageSize} OFFSET {pagingOffset}");
+
+                return queryFunc(builder).ToList();
+            }
+
+            var sortKey = TableMapping.Mapper.GetSortKey(pagingSpec.SortKey);
             builder.OrderBy($"\"{sortKey.Table ?? _table}\".\"{sortKey.Column}\" {sortDirection} LIMIT {pagingSpec.PageSize} OFFSET {pagingOffset}");
 
             return queryFunc(builder).ToList();

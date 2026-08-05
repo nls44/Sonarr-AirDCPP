@@ -1,11 +1,15 @@
-import moment, { MomentInput } from 'moment';
+import moment from 'moment-timezone';
 import translate from 'Utilities/String/translate';
+import { convertToTimezone } from './convertToTimezone';
 import formatTime from './formatTime';
 import isToday from './isToday';
 import isTomorrow from './isTomorrow';
 import isYesterday from './isYesterday';
 
-function getRelativeDay(date: MomentInput, includeRelativeDate: boolean) {
+function getRelativeDay(
+  date: moment.MomentInput,
+  includeRelativeDate: boolean
+) {
   if (!includeRelativeDate) {
     return '';
   }
@@ -26,20 +30,23 @@ function getRelativeDay(date: MomentInput, includeRelativeDate: boolean) {
 }
 
 function formatDateTime(
-  date: MomentInput,
+  date: moment.MomentInput,
   dateFormat: string,
   timeFormat: string,
-  { includeSeconds = false, includeRelativeDay = false } = {}
+  { includeSeconds = false, includeRelativeDay = false, timeZone = '' } = {}
 ) {
   if (!date) {
     return '';
   }
 
-  const relativeDay = getRelativeDay(date, includeRelativeDay);
-  const formattedDate = moment(date).format(dateFormat);
-  const formattedTime = formatTime(date, timeFormat, {
+  const dateTime = convertToTimezone(date, timeZone);
+
+  const relativeDay = getRelativeDay(dateTime, includeRelativeDay);
+  const formattedDate = dateTime.format(dateFormat);
+  const formattedTime = formatTime(dateTime, timeFormat, {
     includeMinuteZero: true,
     includeSeconds,
+    timeZone,
   });
 
   if (relativeDay) {
@@ -49,6 +56,7 @@ function formatDateTime(
       formattedTime,
     });
   }
+
   return translate('FormatDateTime', { formattedDate, formattedTime });
 }
 

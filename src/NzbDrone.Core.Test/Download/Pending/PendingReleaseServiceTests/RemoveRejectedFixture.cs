@@ -9,6 +9,7 @@ using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.Pending;
 using NzbDrone.Core.Indexers;
+using NzbDrone.Core.Lifecycle;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Profiles.Qualities;
@@ -109,11 +110,17 @@ namespace NzbDrone.Core.Test.Download.Pending.PendingReleaseServiceTests
                   .Returns(heldReleases);
         }
 
+        private void InitializeReleases()
+        {
+            Subject.Handle(new ApplicationStartedEvent());
+        }
+
         [Test]
         public void should_remove_if_it_is_the_same_release_from_the_same_indexer()
         {
             GivenHeldRelease(_release.Title, _release.Indexer, _release.PublishDate);
 
+            InitializeReleases();
             Subject.Handle(new RssSyncCompleteEvent(new ProcessedDecisions(new List<DownloadDecision>(),
                                                                            new List<DownloadDecision>(),
                                                                            new List<DownloadDecision> { _temporarilyRejected })));
@@ -126,6 +133,7 @@ namespace NzbDrone.Core.Test.Download.Pending.PendingReleaseServiceTests
         {
             GivenHeldRelease(_release.Title + "-RP", _release.Indexer, _release.PublishDate);
 
+            InitializeReleases();
             Subject.Handle(new RssSyncCompleteEvent(new ProcessedDecisions(new List<DownloadDecision>(),
                                                                            new List<DownloadDecision>(),
                                                                            new List<DownloadDecision> { _temporarilyRejected })));
@@ -138,6 +146,7 @@ namespace NzbDrone.Core.Test.Download.Pending.PendingReleaseServiceTests
         {
             GivenHeldRelease(_release.Title, "AnotherIndexer", _release.PublishDate);
 
+            InitializeReleases();
             Subject.Handle(new RssSyncCompleteEvent(new ProcessedDecisions(new List<DownloadDecision>(),
                                                                            new List<DownloadDecision>(),
                                                                            new List<DownloadDecision> { _temporarilyRejected })));
@@ -150,6 +159,7 @@ namespace NzbDrone.Core.Test.Download.Pending.PendingReleaseServiceTests
         {
             GivenHeldRelease(_release.Title, _release.Indexer, _release.PublishDate.AddHours(1));
 
+            InitializeReleases();
             Subject.Handle(new RssSyncCompleteEvent(new ProcessedDecisions(new List<DownloadDecision>(),
                                                                            new List<DownloadDecision>(),
                                                                            new List<DownloadDecision> { _temporarilyRejected })));

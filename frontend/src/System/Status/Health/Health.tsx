@@ -1,6 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import AppState from 'App/State/AppState';
+import React, { useCallback } from 'react';
 import Alert from 'Components/Alert';
 import FieldSet from 'Components/FieldSet';
 import Icon, { IconKind } from 'Components/Icon';
@@ -14,15 +12,12 @@ import Table from 'Components/Table/Table';
 import TableBody from 'Components/Table/TableBody';
 import TableRow from 'Components/Table/TableRow';
 import { icons, kinds } from 'Helpers/Props';
-import {
-  testAllDownloadClients,
-  testAllIndexers,
-} from 'Store/Actions/settingsActions';
-import { fetchHealth } from 'Store/Actions/systemActions';
+import { useTestAllDownloadClients } from 'Settings/DownloadClients/DownloadClients/useDownloadClients';
+import { useTestAllIndexers } from 'Settings/Indexers/useIndexers';
 import titleCase from 'Utilities/String/titleCase';
 import translate from 'Utilities/String/translate';
-import createHealthSelector from './createHealthSelector';
 import HealthItemLink from './HealthItemLink';
+import useHealth from './useHealth';
 import styles from './Health.css';
 
 const columns: Column[] = [
@@ -45,30 +40,21 @@ const columns: Column[] = [
 ];
 
 function Health() {
-  const dispatch = useDispatch();
-  const { isFetching, isPopulated, items } = useSelector(
-    createHealthSelector()
-  );
-  const isTestingAllDownloadClients = useSelector(
-    (state: AppState) => state.settings.downloadClients.isTestingAll
-  );
-  const isTestingAllIndexers = useSelector(
-    (state: AppState) => state.settings.indexers.isTestingAll
-  );
+  const { data, isFetched, isFetching, isLoading } = useHealth();
 
-  const healthIssues = !!items.length;
+  const { testAllIndexers, isTestingAllIndexers } = useTestAllIndexers();
+  const { testAllDownloadClients, isTestingAllDownloadClients } =
+    useTestAllDownloadClients();
+
+  const healthIssues = !!data.length;
 
   const handleTestAllDownloadClientsPress = useCallback(() => {
-    dispatch(testAllDownloadClients());
-  }, [dispatch]);
+    testAllDownloadClients();
+  }, [testAllDownloadClients]);
 
   const handleTestAllIndexersPress = useCallback(() => {
-    dispatch(testAllIndexers());
-  }, [dispatch]);
-
-  useEffect(() => {
-    dispatch(fetchHealth());
-  }, [dispatch]);
+    testAllIndexers();
+  }, [testAllIndexers]);
 
   return (
     <FieldSet
@@ -76,15 +62,15 @@ function Health() {
         <div className={styles.legend}>
           {translate('Health')}
 
-          {isFetching && isPopulated ? (
+          {isFetching && !isFetched ? (
             <LoadingIndicator className={styles.loading} size={20} />
           ) : null}
         </div>
       }
     >
-      {isFetching && !isPopulated ? <LoadingIndicator /> : null}
+      {isLoading ? <LoadingIndicator /> : null}
 
-      {isPopulated && !healthIssues ? (
+      {isFetched && !healthIssues ? (
         <div className={styles.healthOk}>
           {translate('NoIssuesWithYourConfiguration')}
         </div>
@@ -94,10 +80,11 @@ function Health() {
         <>
           <Table columns={columns}>
             <TableBody>
-              {items.map((item) => {
+              {data.map((item) => {
                 const source = item.source;
 
                 let kind: IconKind = kinds.WARNING;
+
                 switch (item.type.toLowerCase()) {
                   case 'error':
                     kind = kinds.DANGER;
@@ -128,6 +115,7 @@ function Health() {
                         name={icons.WIKI}
                         to={item.wikiUrl}
                         title={translate('ReadTheWikiForMoreInformation')}
+                        aria-label={translate('ReadTheWikiForMoreInformation')}
                       />
 
                       <HealthItemLink source={source} />

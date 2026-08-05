@@ -1,39 +1,29 @@
-import React, { useCallback } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { createSelector } from 'reselect';
-import { useSelect } from 'App/SelectContext';
-import AppState from 'App/State/AppState';
-import { ImportSeries } from 'App/State/ImportSeriesAppState';
+import React, { useCallback, useEffect } from 'react';
+import { useSelect } from 'App/Select/SelectContext';
 import FormInputGroup from 'Components/Form/FormInputGroup';
 import VirtualTableRowCell from 'Components/Table/Cells/VirtualTableRowCell';
 import VirtualTableSelectCell from 'Components/Table/Cells/VirtualTableSelectCell';
 import { inputTypes } from 'Helpers/Props';
-import { setImportSeriesValue } from 'Store/Actions/importSeriesActions';
-import createExistingSeriesSelector from 'Store/Selectors/createExistingSeriesSelector';
+import useExistingSeries from 'Series/useExistingSeries';
 import { InputChanged } from 'typings/inputs';
 import { SelectStateInputProps } from 'typings/props';
+import {
+  ImportSeriesItem,
+  UnamppedFolderItem,
+  updateImportSeriesItem,
+  useImportSeriesItem,
+} from './importSeriesStore';
 import ImportSeriesSelectSeries from './SelectSeries/ImportSeriesSelectSeries';
 import styles from './ImportSeriesRow.css';
 
-function createItemSelector(id: string) {
-  return createSelector(
-    (state: AppState) => state.importSeries.items,
-    (items) => {
-      return (
-        items.find((item) => {
-          return item.id === id;
-        }) || ({} as ImportSeries)
-      );
-    }
-  );
-}
-
 interface ImportSeriesRowProps {
-  id: string;
+  unmappedFolder: UnamppedFolderItem;
 }
 
-function ImportSeriesRow({ id }: ImportSeriesRowProps) {
-  const dispatch = useDispatch();
+function ImportSeriesRow({ unmappedFolder }: ImportSeriesRowProps) {
+  const id = unmappedFolder.id;
+
+  const item = useImportSeriesItem(unmappedFolder.id);
 
   const {
     relativePath,
@@ -42,45 +32,45 @@ function ImportSeriesRow({ id }: ImportSeriesRowProps) {
     seasonFolder,
     seriesType,
     selectedSeries,
-  } = useSelector(createItemSelector(id));
+  } = item ?? {};
 
-  const isExistingSeries = useSelector(
-    createExistingSeriesSelector(selectedSeries?.tvdbId)
-  );
+  const isExistingSeries = useExistingSeries(selectedSeries?.tvdbId);
 
-  const [selectState, selectDispatch] = useSelect();
+  const { getIsSelected, toggleSelected, toggleDisabled } =
+    useSelect<ImportSeriesItem>();
 
   const handleInputChange = useCallback(
     ({ name, value }: InputChanged) => {
-      dispatch(
-        // @ts-expect-error - actions are not typed
-        setImportSeriesValue({
-          id,
-          [name]: value,
-        })
-      );
+      updateImportSeriesItem({ id, [name]: value });
     },
-    [id, dispatch]
+    [id]
   );
 
   const handleSelectedChange = useCallback(
-    ({ id, value, shiftKey }: SelectStateInputProps) => {
-      selectDispatch({
-        type: 'toggleSelected',
+    ({ id, value, shiftKey }: SelectStateInputProps<string>) => {
+      toggleSelected({
         id,
         isSelected: value,
         shiftKey,
       });
     },
-    [selectDispatch]
+    [toggleSelected]
   );
+
+  useEffect(() => {
+    toggleDisabled(id, !selectedSeries || isExistingSeries);
+  }, [id, selectedSeries, isExistingSeries, toggleDisabled]);
+
+  useEffect(() => {
+    toggleSelected({ id, isSelected: !!selectedSeries, shiftKey: false });
+  }, [id, selectedSeries, toggleSelected]);
 
   return (
     <>
-      <VirtualTableSelectCell
+      <VirtualTableSelectCell<string>
         inputClassName={styles.selectInput}
         id={id}
-        isSelected={selectState.selectedState[id]}
+        isSelected={getIsSelected(id)}
         isDisabled={!selectedSeries || isExistingSeries}
         onSelectedChange={handleSelectedChange}
       />

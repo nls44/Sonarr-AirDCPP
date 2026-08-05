@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FilterBuilderProp, PropertyFilter } from 'App/State/AppState';
 import SelectInput from 'Components/Form/SelectInput';
 import IconButton from 'Components/Link/IconButton';
+import { FilterBuilderProp, PropertyFilter } from 'Filters/Filter';
 import { filterBuilderValueTypes, icons } from 'Helpers/Props';
 import {
   FilterBuilderTypes,
@@ -10,17 +10,19 @@ import {
 import { DateFilterValue, FilterType } from 'Helpers/Props/filterTypes';
 import { InputChanged } from 'typings/inputs';
 import sortByProp from 'Utilities/Array/sortByProp';
+import translate from 'Utilities/String/translate';
 import BoolFilterBuilderRowValue from './BoolFilterBuilderRowValue';
 import DateFilterBuilderRowValue from './DateFilterBuilderRowValue';
 import DefaultFilterBuilderRowValue from './DefaultFilterBuilderRowValue';
 import HistoryEventTypeFilterBuilderRowValue from './HistoryEventTypeFilterBuilderRowValue';
 import IndexerFilterBuilderRowValue from './IndexerFilterBuilderRowValue';
 import LanguageFilterBuilderRowValue from './LanguageFilterBuilderRowValue';
+import MonitoredStatusFilterBuilderRowValue from './MonitoredStatusFilterBuilderRowValue';
 import ProtocolFilterBuilderRowValue from './ProtocolFilterBuilderRowValue';
 import QualityFilterBuilderRowValue from './QualityFilterBuilderRowValue';
 import QualityProfileFilterBuilderRowValue from './QualityProfileFilterBuilderRowValue';
 import QueueStatusFilterBuilderRowValue from './QueueStatusFilterBuilderRowValue';
-import SeasonsMonitoredStatusFilterBuilderRowValue from './SeasonsMonitoredStatusFilterBuilderRowValue';
+import ReleaseTypeFilterBuilderRowValue from './ReleaseTypeFilterBuilderRowValue';
 import SeriesFilterBuilderRowValue from './SeriesFilterBuilderRowValue';
 import SeriesStatusFilterBuilderRowValue from './SeriesStatusFilterBuilderRowValue';
 import SeriesTypeFilterBuilderRowValue from './SeriesTypeFilterBuilderRowValue';
@@ -109,8 +111,11 @@ function getRowValueConnector<T>(
     case filterBuilderValueTypes.QUEUE_STATUS:
       return QueueStatusFilterBuilderRowValue;
 
-    case filterBuilderValueTypes.SEASONS_MONITORED_STATUS:
-      return SeasonsMonitoredStatusFilterBuilderRowValue;
+    case filterBuilderValueTypes.MONITORED_STATUS:
+      return MonitoredStatusFilterBuilderRowValue;
+
+    case filterBuilderValueTypes.RELEASE_TYPES:
+      return ReleaseTypeFilterBuilderRowValue;
 
     case filterBuilderValueTypes.SERIES:
       return SeriesFilterBuilderRowValue;
@@ -136,7 +141,7 @@ interface FilterBuilderRowProps<T> {
   filterType: FilterType;
   filterCount: number;
   filterBuilderProps: FilterBuilderProp<T>[];
-  sectionItems: T[];
+  sectionItems: ReadonlyArray<T>;
   onAddPress: () => void;
   onFilterChange: (index: number, filter: PropertyFilter) => void;
   onRemovePress: (index: number) => void;
@@ -300,11 +305,16 @@ function FilterBuilderRow<T>({
       <div className={styles.actionsContainer}>
         <IconButton
           name={icons.SUBTRACT}
+          aria-label={translate('Remove')}
           isDisabled={filterCount === 1}
           onPress={handleRemovePress}
         />
 
-        <IconButton name={icons.ADD} onPress={handleAddPress} />
+        <IconButton
+          name={icons.ADD}
+          aria-label={translate('Add')}
+          onPress={handleAddPress}
+        />
       </div>
     </div>
   );

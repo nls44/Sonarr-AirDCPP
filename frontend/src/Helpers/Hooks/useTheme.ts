@@ -1,19 +1,48 @@
-import { useSelector } from 'react-redux';
-import { createSelector } from 'reselect';
-import AppState from 'App/State/AppState';
+import { useEffect, useState } from 'react';
+import { useUiSettingsValues } from 'Settings/UI/useUiSettings';
 import themes from 'Styles/Themes';
 
-function createThemeSelector() {
-  return createSelector(
-    (state: AppState) => state.settings.ui.item.theme || window.Sonarr.theme,
-    (theme) => {
-      return theme;
+const useTheme = (): 'dark' | 'light' => {
+  const { theme } = useUiSettingsValues();
+  const selectedTheme = theme ?? window.Sonarr.theme;
+  const [resolvedTheme, setResolvedTheme] = useState(() => {
+    if (selectedTheme === 'auto') {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light';
     }
-  );
-}
 
-const useTheme = () => {
-  return useSelector(createThemeSelector());
+    return selectedTheme;
+  });
+
+  useEffect(() => {
+    if (selectedTheme !== 'auto') {
+      setResolvedTheme(selectedTheme);
+      return;
+    }
+
+    const applySystemTheme = () => {
+      setResolvedTheme(
+        window.matchMedia('(prefers-color-scheme: dark)').matches
+          ? 'dark'
+          : 'light'
+      );
+    };
+
+    applySystemTheme();
+
+    window
+      .matchMedia('(prefers-color-scheme: dark)')
+      .addEventListener('change', applySystemTheme);
+
+    return () => {
+      window
+        .matchMedia('(prefers-color-scheme: dark)')
+        .removeEventListener('change', applySystemTheme);
+    };
+  }, [selectedTheme]);
+
+  return resolvedTheme;
 };
 
 export default useTheme;

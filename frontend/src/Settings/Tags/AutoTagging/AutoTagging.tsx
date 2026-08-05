@@ -1,5 +1,4 @@
 import React, { useCallback, useState } from 'react';
-import { Tag } from 'App/State/TagsAppState';
 import Card from 'Components/Card';
 import Label from 'Components/Label';
 import IconButton from 'Components/Link/IconButton';
@@ -7,9 +6,13 @@ import ConfirmModal from 'Components/Modal/ConfirmModal';
 import TagList from 'Components/TagList';
 import { icons, kinds } from 'Helpers/Props';
 import { Kind } from 'Helpers/Props/kinds';
-import { AutoTaggingSpecification } from 'typings/AutoTagging';
+import { Tag } from 'Tags/useTags';
 import translate from 'Utilities/String/translate';
 import EditAutoTaggingModal from './EditAutoTaggingModal';
+import {
+  AutoTaggingSpecification,
+  useDeleteAutoTagging,
+} from './useAutoTaggings';
 import styles from './AutoTagging.css';
 
 interface AutoTaggingProps {
@@ -17,9 +20,7 @@ interface AutoTaggingProps {
   name: string;
   specifications: AutoTaggingSpecification[];
   tags: number[];
-  tagList: Tag[];
-  isDeleting: boolean;
-  onConfirmDeleteAutoTagging: (id: number) => void;
+  tagList: ReadonlyArray<Tag>;
   onCloneAutoTaggingPress: (id: number) => void;
 }
 
@@ -29,10 +30,9 @@ export default function AutoTagging({
   tags,
   tagList,
   specifications,
-  isDeleting,
-  onConfirmDeleteAutoTagging,
   onCloneAutoTaggingPress,
 }: AutoTaggingProps) {
+  const { deleteAutoTagging, isDeleting } = useDeleteAutoTagging(id);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
@@ -54,8 +54,8 @@ export default function AutoTagging({
   }, [setIsDeleteModalOpen]);
 
   const onConfirmDelete = useCallback(() => {
-    onConfirmDeleteAutoTagging(id);
-  }, [id, onConfirmDeleteAutoTagging]);
+    deleteAutoTagging();
+  }, [deleteAutoTagging]);
 
   const onClonePress = useCallback(() => {
     onCloneAutoTaggingPress(id);
@@ -65,6 +65,7 @@ export default function AutoTagging({
     <Card
       className={styles.autoTagging}
       overlayContent={true}
+      aria-label={translate('EditAutoTagName', { name })}
       onPress={onEditPress}
     >
       <div className={styles.nameContainer}>
@@ -74,6 +75,7 @@ export default function AutoTagging({
           <IconButton
             className={styles.cloneButton}
             title={translate('CloneAutoTag')}
+            aria-label={translate('CloneAutoTag')}
             name={icons.CLONE}
             onPress={onClonePress}
           />
@@ -93,6 +95,7 @@ export default function AutoTagging({
           if (item.required) {
             kind = 'success';
           }
+
           if (item.negate) {
             kind = 'danger';
           }

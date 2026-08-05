@@ -1,4 +1,7 @@
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using NzbDrone.Core.ImportLists.Exclusions;
 using NzbDrone.Core.MediaCover;
 using NzbDrone.Core.MetadataSource;
 using NzbDrone.Core.Organizer;
@@ -13,19 +16,21 @@ public class SeriesLookupController : Controller
     private readonly ISearchForNewSeries _searchProxy;
     private readonly IBuildFileNames _fileNameBuilder;
     private readonly IMapCoversToLocal _coverMapper;
+    private readonly IImportListExclusionService _importListExclusionService;
 
-    public SeriesLookupController(ISearchForNewSeries searchProxy, IBuildFileNames fileNameBuilder, IMapCoversToLocal coverMapper)
+    public SeriesLookupController(ISearchForNewSeries searchProxy, IBuildFileNames fileNameBuilder, IMapCoversToLocal coverMapper,  IImportListExclusionService importListExclusionService)
     {
         _searchProxy = searchProxy;
         _fileNameBuilder = fileNameBuilder;
         _coverMapper = coverMapper;
+        _importListExclusionService = importListExclusionService;
     }
 
     [HttpGet]
-    public IEnumerable<SeriesResource> Search([FromQuery] string term)
+    public Ok<IEnumerable<SeriesResource>> Search([FromQuery] string term)
     {
         var tvDbResults = _searchProxy.SearchForNewSeries(term);
-        return MapToResource(tvDbResults);
+        return TypedResults.Ok(MapToResource(tvDbResults));
     }
 
     private IEnumerable<SeriesResource> MapToResource(IEnumerable<NzbDrone.Core.Tv.Series> series)
@@ -45,6 +50,7 @@ public class SeriesLookupController : Controller
 
             resource.Folder = _fileNameBuilder.GetSeriesFolder(currentSeries);
             resource.Statistics = new SeriesStatistics().ToResource(resource.Seasons);
+            resource.IsExcluded = _importListExclusionService.FindByTvdbId(currentSeries.TvdbId) is not null;
 
             yield return resource;
         }

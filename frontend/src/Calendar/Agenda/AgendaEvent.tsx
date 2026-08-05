@@ -1,8 +1,7 @@
 import classNames from 'classnames';
-import moment from 'moment';
 import React, { useCallback, useState } from 'react';
-import { useSelector } from 'react-redux';
-import AppState from 'App/State/AppState';
+import { useQueueItemForEpisode } from 'Activity/Queue/Details/QueueDetailsProvider';
+import { useCalendarOptions } from 'Calendar/calendarOptionsStore';
 import CalendarEventQueueDetails from 'Calendar/Events/CalendarEventQueueDetails';
 import getStatusStyle from 'Calendar/getStatusStyle';
 import Icon from 'Components/Icon';
@@ -10,11 +9,11 @@ import Link from 'Components/Link/Link';
 import EpisodeDetailsModal from 'Episode/EpisodeDetailsModal';
 import episodeEntities from 'Episode/episodeEntities';
 import getFinaleTypeName from 'Episode/getFinaleTypeName';
-import useEpisodeFile from 'EpisodeFile/useEpisodeFile';
+import { useEpisodeFile } from 'EpisodeFile/EpisodeFileProvider';
 import { icons, kinds } from 'Helpers/Props';
-import useSeries from 'Series/useSeries';
-import { createQueueItemSelectorForHook } from 'Store/Selectors/createQueueItemSelector';
-import createUISettingsSelector from 'Store/Selectors/createUISettingsSelector';
+import { useSingleSeries } from 'Series/useSeries';
+import { useUiSettingsValues } from 'Settings/UI/useUiSettings';
+import { convertToTimezone } from 'Utilities/Date/convertToTimezone';
 import formatTime from 'Utilities/Date/formatTime';
 import padNumber from 'Utilities/Number/padNumber';
 import translate from 'Utilities/String/translate';
@@ -55,24 +54,26 @@ function AgendaEvent(props: AgendaEventProps) {
     showDate,
   } = props;
 
-  const series = useSeries(seriesId)!;
+  const series = useSingleSeries(seriesId)!;
   const episodeFile = useEpisodeFile(episodeFileId);
-  const queueItem = useSelector(createQueueItemSelectorForHook(id));
-  const { timeFormat, longDateFormat, enableColorImpairedMode } = useSelector(
-    createUISettingsSelector()
-  );
+  const queueItem = useQueueItemForEpisode(id);
+  const { timeFormat, longDateFormat, enableColorImpairedMode, timeZone } =
+    useUiSettingsValues();
 
   const {
     showEpisodeInformation,
     showFinaleIcon,
     showSpecialIcon,
     showCutoffUnmetIcon,
-  } = useSelector((state: AppState) => state.calendar.options);
+  } = useCalendarOptions();
 
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
-  const startTime = moment(airDateUtc);
-  const endTime = moment(airDateUtc).add(series.runtime, 'minutes');
+  const startTime = convertToTimezone(airDateUtc, timeZone);
+  const endTime = convertToTimezone(airDateUtc, timeZone).add(
+    series.runtime,
+    'minutes'
+  );
   const downloading = !!(queueItem || grabbed);
   const isMonitored = series.monitored && monitored;
   const statusStyle = getStatusStyle(
@@ -110,9 +111,10 @@ function AgendaEvent(props: AgendaEventProps) {
           )}
         >
           <div className={styles.time}>
-            {formatTime(airDateUtc, timeFormat)} -{' '}
+            {formatTime(airDateUtc, timeFormat, { timeZone })} -{' '}
             {formatTime(endTime.toISOString(), timeFormat, {
               includeMinuteZero: true,
+              timeZone,
             })}
           </div>
 
@@ -152,10 +154,7 @@ function AgendaEvent(props: AgendaEventProps) {
 
           {queueItem ? (
             <span className={styles.statusIcon}>
-              <CalendarEventQueueDetails
-                seasonNumber={seasonNumber}
-                {...queueItem}
-              />
+              <CalendarEventQueueDetails {...queueItem} />
             </span>
           ) : null}
 

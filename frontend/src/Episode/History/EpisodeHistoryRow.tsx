@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import HistoryDetails from 'Activity/History/Details/HistoryDetails';
 import HistoryEventTypeCell from 'Activity/History/HistoryEventTypeCell';
+import { useMarkAsFailed } from 'Activity/History/useHistory';
 import Icon from 'Components/Icon';
 import IconButton from 'Components/Link/IconButton';
 import ConfirmModal from 'Components/Modal/ConfirmModal';
@@ -14,7 +15,7 @@ import EpisodeQuality from 'Episode/EpisodeQuality';
 import { icons, kinds, tooltipPositions } from 'Helpers/Props';
 import Language from 'Language/Language';
 import { QualityModel } from 'Quality/Quality';
-import CustomFormat from 'typings/CustomFormat';
+import { CustomFormat } from 'Settings/CustomFormats/CustomFormats/useCustomFormats';
 import { HistoryData, HistoryEventType } from 'typings/History';
 import formatCustomFormatScore from 'Utilities/Number/formatCustomFormatScore';
 import translate from 'Utilities/String/translate';
@@ -51,7 +52,6 @@ interface EpisodeHistoryRowProps {
   date: string;
   data: HistoryData;
   downloadId?: string;
-  onMarkAsFailedPress: (id: number) => void;
 }
 
 function EpisodeHistoryRow({
@@ -66,18 +66,18 @@ function EpisodeHistoryRow({
   date,
   data,
   downloadId,
-  onMarkAsFailedPress,
 }: EpisodeHistoryRowProps) {
   const [isMarkAsFailedModalOpen, setIsMarkAsFailedModalOpen] = useState(false);
+  const { markAsFailed } = useMarkAsFailed(id, 'episode');
 
   const handleMarkAsFailedPress = useCallback(() => {
     setIsMarkAsFailedModalOpen(true);
   }, []);
 
   const handleConfirmMarkAsFailed = useCallback(() => {
-    onMarkAsFailedPress(id);
+    markAsFailed();
     setIsMarkAsFailedModalOpen(false);
-  }, [id, onMarkAsFailedPress]);
+  }, [markAsFailed]);
 
   const handleMarkAsFailedModalClose = useCallback(() => {
     setIsMarkAsFailedModalOpen(false);
@@ -128,6 +128,7 @@ function EpisodeHistoryRow({
         {eventType === 'grabbed' && (
           <IconButton
             title={translate('MarkAsFailed')}
+            aria-label={translate('MarkAsFailed')}
             name={icons.REMOVE}
             size={14}
             onPress={handleMarkAsFailedPress}

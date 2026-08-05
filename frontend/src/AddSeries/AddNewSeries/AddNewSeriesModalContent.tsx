@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSelector } from 'react-redux';
 import AddSeries from 'AddSeries/AddSeries';
 import {
   AddSeriesOptions,
@@ -8,6 +7,7 @@ import {
 } from 'AddSeries/addSeriesOptionsStore';
 import SeriesMonitoringOptionsPopoverContent from 'AddSeries/SeriesMonitoringOptionsPopoverContent';
 import SeriesTypePopoverContent from 'AddSeries/SeriesTypePopoverContent';
+import { useAppDimension } from 'App/appStore';
 import CheckInput from 'Components/Form/CheckInput';
 import Form from 'Components/Form/Form';
 import FormGroup from 'Components/Form/FormGroup';
@@ -20,13 +20,13 @@ import ModalContent from 'Components/Modal/ModalContent';
 import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import Popover from 'Components/Tooltip/Popover';
+import { getValidationFailures } from 'Helpers/Hooks/useApiMutation';
 import { icons, inputTypes, kinds, tooltipPositions } from 'Helpers/Props';
 import { SeriesType } from 'Series/Series';
 import SeriesPoster from 'Series/SeriesPoster';
-import createDimensionsSelector from 'Store/Selectors/createDimensionsSelector';
-import selectSettings from 'Store/Selectors/selectSettings';
-import useIsWindows from 'System/useIsWindows';
+import { useIsWindows } from 'System/Status/useSystemStatus';
 import { InputChanged } from 'typings/inputs';
+import selectSettings from 'Utilities/selectSettings';
 import translate from 'Utilities/String/translate';
 import { useAddSeries } from './useAddSeries';
 import styles from './AddNewSeriesModalContent.css';
@@ -44,17 +44,16 @@ function AddNewSeriesModalContent({
 }: AddNewSeriesModalContentProps) {
   const { title, year, overview, images, folder } = series;
   const options = useAddSeriesOptions();
-  const { isSmallScreen } = useSelector(createDimensionsSelector());
+  const isSmallScreen = useAppDimension('isSmallScreen');
   const isWindows = useIsWindows();
 
-  const {
-    isPending: isAdding,
-    error: addError,
-    mutate: addSeries,
-  } = useAddSeries();
+  const { isAdding, addError, addSeries } = useAddSeries();
 
   const { settings, validationErrors, validationWarnings } = useMemo(() => {
-    return selectSettings(options, {}, addError);
+    return {
+      ...selectSettings(options, {}),
+      ...getValidationFailures(addError),
+    };
   }, [options, addError]);
 
   const [seriesType, setSeriesType] = useState<SeriesType>(
@@ -92,12 +91,14 @@ function AddNewSeriesModalContent({
     addSeries({
       ...series,
       rootFolderPath: rootFolderPath.value,
-      monitor: monitor.value,
+      addOptions: {
+        monitor: monitor.value,
+        searchForMissingEpisodes: searchForMissingEpisodes.value,
+        searchForCutoffUnmetEpisodes: searchForCutoffUnmetEpisodes.value,
+      },
       qualityProfileId: qualityProfileId.value,
       seriesType,
       seasonFolder: seasonFolder.value,
-      searchForMissingEpisodes: searchForMissingEpisodes.value,
-      searchForCutoffUnmetEpisodes: searchForCutoffUnmetEpisodes.value,
       tags: tags.value,
     });
   }, [
@@ -135,6 +136,7 @@ function AddNewSeriesModalContent({
                 className={styles.poster}
                 images={images}
                 size={250}
+                title={title}
               />
             </div>
           )}

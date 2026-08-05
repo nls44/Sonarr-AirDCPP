@@ -90,7 +90,7 @@ function QueueStatus(props: QueueStatusProps) {
 
     if (trackedDownloadState === 'importing') {
       title += ` - ${translate('Importing')}`;
-      iconKind = kinds.PURPLE;
+      iconKind = kinds.PRIMARY;
     }
 
     if (trackedDownloadState === 'failedPending') {
@@ -143,6 +143,7 @@ function QueueStatus(props: QueueStatusProps) {
   return (
     <Popover
       anchor={<Icon name={iconName} kind={iconKind} />}
+      accessibleLabel={title}
       title={title}
       body={
         hasWarning || hasError
