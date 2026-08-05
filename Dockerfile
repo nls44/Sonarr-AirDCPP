@@ -1,8 +1,8 @@
 ARG ALPINE_VERSION="3.21.3"
+FROM alpine:${ALPINE_VERSION} AS base
+
 ARG TARGETPLATFORM
 ARG SONARR_RELEASE="latest"
-
-FROM alpine:${ALPINE_VERSION} AS base
 
 RUN \
   echo "**** install packages ****" && \
@@ -19,7 +19,7 @@ RUN \
   echo "TARGETPLATFORM=$TARGETPLATFORM" && \
   RELEASE_FOR_PLATFORM=$(case ${TARGETPLATFORM:-linux/amd64} in \
     "linux/amd64")   echo ".*linux-musl-x64.tar.gz*"  ;; \
-    "linux/arm64/v8")   echo ".*linux-musl-arm64.tar.gz*" ;; \
+    "linux/arm64")   echo ".*linux-musl-arm64.tar.gz*" ;; \
     *)               echo ""        ;; esac) && \
   echo "RELEASE_FOR_PLATFORM=$RELEASE_FOR_PLATFORM" && \
   mkdir -p \
