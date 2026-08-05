@@ -12,7 +12,7 @@ on:
         description: ".net framework"
         type: string
         required: true
-        default: "net10.0"
+        default: "net8.0"
       major_version:
         description: "Sonarr major version"
         type: string
