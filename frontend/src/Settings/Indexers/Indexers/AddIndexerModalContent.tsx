@@ -31,7 +31,7 @@ function AddIndexerModalContent({
       return schema.reduce<{
         usenetIndexers: IndexerModel[];
         torrentIndexers: IndexerModel[];
-        directConnectIndexers: Indexer[];
+        directConnectIndexers: IndexerModel[];
       }>(
         (acc, item) => {
           if (item.protocol === 'usenet') {

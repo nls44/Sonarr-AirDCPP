@@ -37,7 +37,7 @@ function AddDownloadClientModalContent({
     return schema.reduce<{
       usenetDownloadClients: DownloadClientModel[];
       torrentDownloadClients: DownloadClientModel[];
-      directConnectDownloadClients: DownloadClient[];
+      directConnectDownloadClients: DownloadClientModel[];
     }>(
       (acc, item) => {
         if (item.protocol === 'usenet') {
