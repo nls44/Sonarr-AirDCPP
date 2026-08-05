@@ -1,6 +1,27 @@
 name: Deploy (no notification)
 
 on:
+  workflow_dispatch:
+    inputs:
+      framework:
+        description: ".net framework"
+        type: string
+        required: true
+        default: "net10.0"
+      branch:
+        description: "Git branch used for this build"
+        type: string
+        required: true
+        default: "AirDCPP"
+      major_version:
+        description: "Sonarr major version"
+        type: string
+        required: true
+        default: "5"
+      version:
+        description: "Sonarr version"
+        type: string
+        required: true
   workflow_call:
     inputs:
       framework:
