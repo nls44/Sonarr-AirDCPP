@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
@@ -11,6 +12,7 @@ using NzbDrone.Common.Serializer;
 using NzbDrone.Core.Download.Clients;
 using NzbDrone.Core.Download.Clients.AirDCPP;
 using NzbDrone.Core.Indexers.AirDCPP.Responses;
+using NzbDrone.Core.Parser.Model;
 
 namespace NzbDrone.Core.Indexers.AirDCPP
 {
@@ -101,17 +103,26 @@ namespace NzbDrone.Core.Indexers.AirDCPP
             }
         }
 
-        public string DownloadBySearchInstanceAndResultId(AirDCPPClientSettings settings, string id, string title)
+        public string DownloadBySearchInstanceAndResultId(AirDCPPClientSettings settings, string id, RemoteEpisode remoteEpisode)
         {
+            var title = remoteEpisode.Release.Title;
             var splitResult = id.Split(':');
             var searchInstanceId = splitResult[0];
             var resultId = splitResult[1];
 
             var downloadRequest = BuildRequest(settings).Resource($"search/{searchInstanceId}/results/{resultId}/download").Post().Build();
 
+            var basePath = settings.DownloadDirectory;
+            var targetDirectory = remoteEpisode.Series.SeasonFolder
+                ? Path.Combine(basePath, remoteEpisode.Series.Title, $"Season {remoteEpisode.ParsedEpisodeInfo.SeasonNumber}")
+                : Path.Combine(basePath, remoteEpisode.Series.Title);
+            targetDirectory = $"{targetDirectory}{Path.DirectorySeparatorChar}";
+
+            _logger.Debug($"Downloading episode to target directory {targetDirectory}");
+
             var query = new HubDownloadQuery
             {
-                target_directory = settings.DownloadDirectory
+                target_directory = targetDirectory
             };
 
             downloadRequest.SetContent(query.ToJson());
@@ -125,7 +136,7 @@ namespace NzbDrone.Core.Indexers.AirDCPP
             while (string.IsNullOrEmpty(downloadBundleId))
             {
                 var queueResults = GetQueueHistory(settings);
-                downloadBundleId = queueResults.Where(result => result.name == title).FirstOrDefault()?.id.ToString();
+                downloadBundleId = queueResults.FirstOrDefault(result => result.name == title)?.id.ToString();
                 Thread.Sleep(1000);
             }
 

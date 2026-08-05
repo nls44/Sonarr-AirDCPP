@@ -8,6 +8,7 @@ using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Indexers.AirDCPP;
 using NzbDrone.Core.Localization;
+using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.RemotePathMappings;
 
 namespace NzbDrone.Core.Download.Clients.AirDCPP
@@ -64,9 +65,9 @@ namespace NzbDrone.Core.Download.Clients.AirDCPP
         {
         }
 
-        protected override string AddFromId(string searchInstanceAndResultIds, string title)
+        protected override string AddFromId(string searchInstanceAndResultIds, RemoteEpisode remoteEpisode)
         {
-            return _airDCPPProxy.DownloadBySearchInstanceAndResultId(Settings, searchInstanceAndResultIds, title);
+            return _airDCPPProxy.DownloadBySearchInstanceAndResultId(Settings, searchInstanceAndResultIds, remoteEpisode);
         }
     }
 }

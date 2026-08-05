@@ -29,13 +29,13 @@ namespace NzbDrone.Core.Download
 
         public override DownloadProtocol Protocol => DownloadProtocol.DirectConnect;
 
-        protected abstract string AddFromId(string id, string title);
+        protected abstract string AddFromId(string id, RemoteEpisode remoteEpisode);
 
         public override Task<string> Download(RemoteEpisode remoteEpisode, IIndexer indexer)
         {
             var id = remoteEpisode.Release.DownloadUrl;
             _logger.Info("Adding report [{0}] to the queue.", remoteEpisode.Release.Title);
-            var downloadResult = AddFromId(id, remoteEpisode.Release.Title);
+            var downloadResult = AddFromId(id, remoteEpisode);
             return Task.FromResult(downloadResult);
         }
     }

@@ -94,11 +94,10 @@ namespace NzbDrone.Core.Notifications.Plex.Server
                 foreach (var episode in episodes)
                 {
                     var episodeLocation = _diskProvider.GetParentFolder(episode.Path).TrimEnd(Path.DirectorySeparatorChar);
-                    var sectionLocation = _diskProvider.GetParentFolder(episodeLocation).TrimEnd(Path.DirectorySeparatorChar);
 
-                    _logger.Debug("Searching matching section for {0}", sectionLocation);
+                    _logger.Debug("Searching matching section for {0}", episodeLocation);
                     var matchingSections = sections.Where(section => section.Locations.Any(location =>
-                            location.Path.TrimEnd(Path.DirectorySeparatorChar) == sectionLocation))
+                            IsSubDirectory(episodeLocation, location.Path)))
                         .ToList();
 
                     if (matchingSections.Any())
@@ -110,7 +109,7 @@ namespace NzbDrone.Core.Notifications.Plex.Server
                     }
                     else
                     {
-                        _logger.Warn("Failed to find matching section for {0}", sectionLocation);
+                        _logger.Warn("Failed to find matching section for {0}", episodeLocation);
                     }
                 }
             }
@@ -118,6 +117,30 @@ namespace NzbDrone.Core.Notifications.Plex.Server
             {
                 UpdateLibrary([series], settings);
             }
+        }
+
+        // Checks if the given directory is a subdirectory of the parent directory
+        private bool IsSubDirectory(string directory, string parentDirectory)
+        {
+            var isSubDirectory = false;
+
+            var parentDir = new DirectoryInfo(parentDirectory.TrimEnd(Path.DirectorySeparatorChar));
+            var subDir = new DirectoryInfo(directory.TrimEnd(Path.DirectorySeparatorChar));
+
+            while (subDir.Parent != null)
+            {
+                if (subDir.Parent.FullName == parentDir.FullName)
+                {
+                    isSubDirectory = true;
+                    break;
+                }
+                else
+                {
+                    subDir = subDir.Parent;
+                }
+            }
+
+            return isSubDirectory;
         }
 
         private List<PlexSection> GetSections(PlexServerSettings settings)
