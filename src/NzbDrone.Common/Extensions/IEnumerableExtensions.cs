@@ -141,11 +141,21 @@ namespace NzbDrone.Common.Extensions
 
         public static string ConcatToString<TSource>(this IEnumerable<TSource> source, string separator = ", ")
         {
+            if (source == null)
+            {
+                return string.Empty;
+            }
+
             return string.Join(separator, source.Select(x => x.ToString()));
         }
 
         public static string ConcatToString<TSource>(this IEnumerable<TSource> source, Func<TSource, string> predicate, string separator = ", ")
         {
+            if (source == null)
+            {
+                return string.Empty;
+            }
+
             return string.Join(separator, source.Select(predicate));
         }
     }
