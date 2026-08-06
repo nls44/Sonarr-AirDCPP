@@ -1,0 +1,73 @@
+# syntax=docker/dockerfile:1
+#
+# Dockerfile.local — builds Sonarr-AirDCPP FROM SOURCE, so you can build and
+# test Docker images without cutting a GitHub release.
+#
+#   docker build -f Dockerfile.local -t sonarr-airdcpp:test .
+#   docker run --rm -p 8989:8989 -v "$PWD/config:/config" sonarr-airdcpp:test
+#
+# Targets linux-musl-x64 (amd64). For arm64, pass --build-arg RUNTIME=linux-musl-arm64
+# (and build with: docker buildx build --platform linux/arm64 -f Dockerfile.local .)
+
+ARG ALPINE_VERSION="3.21.3"
+ARG RUNTIME="linux-musl-x64"
+ARG FRAMEWORK="net8.0"
+
+########################################
+# 1. Frontend (webpack -> _output/UI)
+########################################
+FROM node:20-alpine AS frontend
+WORKDIR /repo
+COPY package.json yarn.lock tsconfig.json ./
+RUN yarn install --frozen-lockfile --network-timeout 120000
+COPY frontend/ ./frontend/
+RUN yarn build --env production
+# stable path for the runtime stage
+RUN mkdir /ui && cp -r _output/UI/. /ui/
+
+########################################
+# 2. Backend (self-contained publish for musl)
+########################################
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS backend
+ARG RUNTIME
+ARG FRAMEWORK
+WORKDIR /repo
+COPY . .
+# ignore the repo's pinned global.json so the image's SDK is used
+RUN rm -f global.json
+RUN dotnet msbuild -restore src/Sonarr.sln \
+      -p:SelfContained=True \
+      -p:Configuration=Release \
+      -p:Platform=Posix \
+      -p:RuntimeIdentifiers=${RUNTIME} \
+      -p:EnableWindowsTargeting=true \
+      -p:RunAnalyzers=false \
+      -p:TreatWarningsAsErrors=false \
+      -t:PublishAllRids
+RUN mkdir /app-out && cp -r _output/${FRAMEWORK}/${RUNTIME}/publish/. /app-out/ \
+ && rm -f /app-out/ServiceUninstall.* /app-out/ServiceInstall.* /app-out/Sonarr.Windows.*
+
+########################################
+# 3. Runtime
+########################################
+FROM alpine:${ALPINE_VERSION} AS runtime
+# mirror the known-good linuxserver runtime environment
+ENV COMPlus_EnableDiagnostics=0 \
+    XDG_CONFIG_HOME=/config/xdg \
+    TMPDIR=/run/sonarr-temp
+RUN apk add --no-cache \
+      ca-certificates \
+      coreutils \
+      icu-libs \
+      sqlite-libs \
+      bash \
+      curl \
+      xmlstarlet && \
+    mkdir -p /app/sonarr/bin /config /run/sonarr-temp
+COPY --from=backend /app-out/. /app/sonarr/bin/
+COPY --from=frontend /ui/ /app/sonarr/bin/UI/
+RUN chmod +x /app/sonarr/bin/Sonarr
+WORKDIR /app/sonarr/bin
+EXPOSE 8989
+VOLUME /config
+CMD ["./Sonarr", "-nobrowser", "-data=/config"]
