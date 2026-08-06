@@ -1,8 +1,14 @@
-ARG ALPINE_VERSION="3.21.3"
+ARG ALPINE_VERSION="3.24"
 FROM alpine:${ALPINE_VERSION} AS base
 
 ARG TARGETPLATFORM
 ARG SONARR_RELEASE="latest"
+
+ENV COMPlus_EnableDiagnostics=0 \
+    DOTNET_EnableDiagnostics=0 \
+    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 \
+    XDG_CONFIG_HOME="/config/xdg" \
+    TMPDIR="/tmp/sonarr-temp"
 
 RUN \
   echo "**** install packages ****" && \
@@ -14,7 +20,8 @@ RUN \
     coreutils \
     icu-libs \
     sqlite-libs \
-    xmlstarlet && \
+    xmlstarlet \
+    tini && \
   echo "**** install sonarr ****" && \
   echo "TARGETPLATFORM=$TARGETPLATFORM" && \
   RELEASE_FOR_PLATFORM=$(case ${TARGETPLATFORM:-linux/amd64} in \
@@ -24,10 +31,11 @@ RUN \
   echo "RELEASE_FOR_PLATFORM=$RELEASE_FOR_PLATFORM" && \
   mkdir -p \
    /app/sonarr/bin \
-   /config && \
+   /config \
+   /tmp/sonarr-temp && \
   curl -o \
     /tmp/sonarr.tar.gz -L \
-	"$(curl -s "https://api.github.com/repos/nls44/Sonarr-AirDCPP/releases/${SONARR_RELEASE}" | jq '.assets' | jq -r --arg RELEASE_FOR_PLATFORM "$RELEASE_FOR_PLATFORM" '.[].browser_download_url | match($RELEASE_FOR_PLATFORM;"i") | .string')" && \
+    "$(curl -s "https://api.github.com/repos/nls44/Sonarr-AirDCPP/releases/${SONARR_RELEASE}" | jq '.assets' | jq -r --arg RELEASE_FOR_PLATFORM "$RELEASE_FOR_PLATFORM" '.[].browser_download_url | match($RELEASE_FOR_PLATFORM;"i") | .string')" && \
   tar xzf \
     /tmp/sonarr.tar.gz -C \
     /app/sonarr/bin --strip-components=1 && \
@@ -42,4 +50,5 @@ EXPOSE 8989
 
 VOLUME /config
 
+ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["/app/sonarr/bin/Sonarr", "-nobrowser", "-data=/config"]
