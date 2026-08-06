@@ -50,5 +50,7 @@ EXPOSE 8989
 
 VOLUME /config
 
+WORKDIR /app/sonarr/bin
+
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["/app/sonarr/bin/Sonarr", "-nobrowser", "-data=/config"]
+CMD ["./Sonarr", "-nobrowser", "-data=/config"]
