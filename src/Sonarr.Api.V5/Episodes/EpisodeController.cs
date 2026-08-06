@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using NzbDrone.Common.Disk;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.DecisionEngine.Specifications;
 using NzbDrone.Core.Tv;
@@ -18,8 +20,10 @@ public class EpisodeController : EpisodeControllerWithSignalR
                          IEpisodeService episodeService,
                          IUpgradableSpecification upgradableSpecification,
                          ICustomFormatCalculationService formatCalculator,
-                         IBroadcastSignalRMessage signalRBroadcaster)
-        : base(episodeService, seriesService, upgradableSpecification, formatCalculator, signalRBroadcaster)
+                         IBroadcastSignalRMessage signalRBroadcaster,
+                         IConfigService configService,
+                         IDiskProvider diskProvider)
+        : base(episodeService, seriesService, upgradableSpecification, formatCalculator, signalRBroadcaster, configService, diskProvider)
     {
     }
 

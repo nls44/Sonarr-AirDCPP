@@ -2,6 +2,8 @@ using System.Net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using NzbDrone.Common.Disk;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.Datastore.Events;
 using NzbDrone.Core.DecisionEngine.Specifications;
@@ -31,13 +33,17 @@ public class EpisodeFileController : RestControllerWithSignalR<EpisodeFileResour
     private readonly ISeriesService _seriesService;
     private readonly ICustomFormatCalculationService _formatCalculator;
     private readonly IUpgradableSpecification _upgradableSpecification;
+    private readonly IConfigService _configService;
+    private readonly IDiskProvider _diskProvider;
 
     public EpisodeFileController(IBroadcastSignalRMessage signalRBroadcaster,
                          IMediaFileService mediaFileService,
                          IDeleteMediaFiles mediaFileDeletionService,
                          ISeriesService seriesService,
                          ICustomFormatCalculationService formatCalculator,
-                         IUpgradableSpecification upgradableSpecification)
+                         IUpgradableSpecification upgradableSpecification,
+                         IConfigService configService,
+                         IDiskProvider diskProvider)
         : base(signalRBroadcaster)
     {
         _mediaFileService = mediaFileService;
@@ -45,6 +51,8 @@ public class EpisodeFileController : RestControllerWithSignalR<EpisodeFileResour
         _seriesService = seriesService;
         _formatCalculator = formatCalculator;
         _upgradableSpecification = upgradableSpecification;
+        _configService = configService;
+        _diskProvider = diskProvider;
     }
 
     protected override EpisodeFileResource GetResourceById(int id)
@@ -52,7 +60,7 @@ public class EpisodeFileController : RestControllerWithSignalR<EpisodeFileResour
         var episodeFile = _mediaFileService.Get(id);
         var series = _seriesService.GetSeries(episodeFile.SeriesId);
 
-        var resource = episodeFile.ToResource(series, _upgradableSpecification, _formatCalculator);
+        var resource = episodeFile.ToResource(series, _upgradableSpecification, _formatCalculator, _configService.CopyUsingSymlinks, _diskProvider);
 
         return resource;
     }
@@ -76,7 +84,7 @@ public class EpisodeFileController : RestControllerWithSignalR<EpisodeFileResour
                 return TypedResults.Ok(new List<EpisodeFileResource>());
             }
 
-            return TypedResults.Ok(files.ConvertAll(e => e.ToResource(series, _upgradableSpecification, _formatCalculator)));
+            return TypedResults.Ok(files.ConvertAll(e => e.ToResource(series, _upgradableSpecification, _formatCalculator, _configService.CopyUsingSymlinks, _diskProvider)));
         }
         else
         {
@@ -84,7 +92,7 @@ public class EpisodeFileController : RestControllerWithSignalR<EpisodeFileResour
 
             return TypedResults.Ok(episodeFiles.GroupBy(e => e.SeriesId)
                                .SelectMany(f => f.ToList()
-                                                 .ConvertAll(e => e.ToResource(_seriesService.GetSeries(f.Key), _upgradableSpecification, _formatCalculator)))
+                                                 .ConvertAll(e => e.ToResource(_seriesService.GetSeries(f.Key), _upgradableSpecification, _formatCalculator, _configService.CopyUsingSymlinks, _diskProvider)))
                                .ToList());
         }
     }
@@ -188,7 +196,7 @@ public class EpisodeFileController : RestControllerWithSignalR<EpisodeFileResour
 
         var series = _seriesService.GetSeries(episodeFiles.First().SeriesId);
 
-        return TypedResults.Ok(episodeFiles.ConvertAll(f => f.ToResource(series, _upgradableSpecification, _formatCalculator)));
+        return TypedResults.Ok(episodeFiles.ConvertAll(f => f.ToResource(series, _upgradableSpecification, _formatCalculator, _configService.CopyUsingSymlinks, _diskProvider)));
     }
 
     [NonAction]

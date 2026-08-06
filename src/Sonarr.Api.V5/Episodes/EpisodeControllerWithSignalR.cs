@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using NzbDrone.Common.Disk;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.Datastore.Events;
 using NzbDrone.Core.DecisionEngine.Specifications;
@@ -22,18 +24,24 @@ public abstract class EpisodeControllerWithSignalR : RestControllerWithSignalR<E
     protected readonly ISeriesService _seriesService;
     protected readonly IUpgradableSpecification _upgradableSpecification;
     protected readonly ICustomFormatCalculationService _formatCalculator;
+    protected readonly IConfigService _configService;
+    protected readonly IDiskProvider _diskProvider;
 
     protected EpisodeControllerWithSignalR(IEpisodeService episodeService,
                                        ISeriesService seriesService,
                                        IUpgradableSpecification upgradableSpecification,
                                        ICustomFormatCalculationService formatCalculator,
-                                       IBroadcastSignalRMessage signalRBroadcaster)
+                                       IBroadcastSignalRMessage signalRBroadcaster,
+                                       IConfigService configService,
+                                       IDiskProvider diskProvider)
         : base(signalRBroadcaster)
     {
         _episodeService = episodeService;
         _seriesService = seriesService;
         _upgradableSpecification = upgradableSpecification;
         _formatCalculator = formatCalculator;
+        _configService = configService;
+        _diskProvider = diskProvider;
     }
 
     protected EpisodeControllerWithSignalR(IEpisodeService episodeService,
@@ -41,13 +49,17 @@ public abstract class EpisodeControllerWithSignalR : RestControllerWithSignalR<E
                                        IUpgradableSpecification upgradableSpecification,
                                        ICustomFormatCalculationService formatCalculator,
                                        IBroadcastSignalRMessage signalRBroadcaster,
-                                       string resource)
+                                       string resource,
+                                       IConfigService configService,
+                                       IDiskProvider diskProvider)
         : base(signalRBroadcaster)
     {
         _episodeService = episodeService;
         _seriesService = seriesService;
         _upgradableSpecification = upgradableSpecification;
         _formatCalculator = formatCalculator;
+        _configService = configService;
+        _diskProvider = diskProvider;
     }
 
     protected override EpisodeResource GetResourceById(int id)
@@ -72,7 +84,7 @@ public abstract class EpisodeControllerWithSignalR : RestControllerWithSignalR<E
 
             if (includeEpisodeFile && episode.EpisodeFileId != 0)
             {
-                resource.EpisodeFile = episode.EpisodeFile.Value.ToResource(series, _upgradableSpecification, _formatCalculator);
+                resource.EpisodeFile = episode.EpisodeFile.Value.ToResource(series, _upgradableSpecification, _formatCalculator, _configService.CopyUsingSymlinks, _diskProvider);
             }
 
             if (includeImages)
@@ -106,7 +118,7 @@ public abstract class EpisodeControllerWithSignalR : RestControllerWithSignalR<E
 
                 if (includeEpisodeFile && episode.EpisodeFileId != 0)
                 {
-                    resource.EpisodeFile = episode.EpisodeFile.Value.ToResource(series, _upgradableSpecification, _formatCalculator);
+                    resource.EpisodeFile = episode.EpisodeFile.Value.ToResource(series, _upgradableSpecification, _formatCalculator, _configService.CopyUsingSymlinks, _diskProvider);
                 }
 
                 if (includeImages)
