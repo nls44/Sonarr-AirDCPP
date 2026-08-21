@@ -112,13 +112,9 @@ namespace NzbDrone.Core.Indexers.AirDCPP
 
             var downloadRequest = BuildRequest(settings).Resource($"search/{searchInstanceId}/results/{resultId}/download").Post().Build();
 
-            var basePath = settings.DownloadDirectory;
-            var targetDirectory = remoteEpisode.Series.SeasonFolder
-                ? Path.Combine(basePath, remoteEpisode.Series.Title, $"Season {remoteEpisode.ParsedEpisodeInfo.SeasonNumber}")
-                : Path.Combine(basePath, remoteEpisode.Series.Title);
-            targetDirectory = $"{targetDirectory}{Path.DirectorySeparatorChar}";
+            var targetDirectory = GetTargetDirectory(settings, remoteEpisode);
 
-            _logger.Debug($"Downloading episode to target directory {targetDirectory}");
+            _logger.Debug("Downloading episode to target directory {0}", targetDirectory);
 
             var query = new HubDownloadQuery
             {
@@ -141,6 +137,23 @@ namespace NzbDrone.Core.Indexers.AirDCPP
             }
 
             return downloadBundleId;
+        }
+
+        internal static string GetTargetDirectory(AirDCPPClientSettings settings, RemoteEpisode remoteEpisode)
+        {
+            if (!settings.UseSeasonFolder)
+            {
+                return settings.DownloadDirectory;
+            }
+
+            var targetDirectory = Path.Combine(settings.DownloadDirectory, remoteEpisode.Series.Title);
+
+            if (remoteEpisode.Series.SeasonFolder)
+            {
+                targetDirectory = Path.Combine(targetDirectory, $"Season {remoteEpisode.ParsedEpisodeInfo.SeasonNumber}");
+            }
+
+            return $"{targetDirectory}{Path.DirectorySeparatorChar}";
         }
 
         public List<QueueResult> GetQueueHistory(AirDCPPClientSettings settings)

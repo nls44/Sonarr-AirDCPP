@@ -10,7 +10,7 @@ namespace NzbDrone.Core.Indexers.AirDCPP
     {
         HttpRequest PerformSearch(AirDCPPSettings settings, string searchTerm);
 
-        string DownloadBySearchInstanceAndResultId(AirDCPPClientSettings settings, string id, RemoteEpisode title);
+        string DownloadBySearchInstanceAndResultId(AirDCPPClientSettings settings, string id, RemoteEpisode remoteEpisode);
 
         List<QueueResult> GetQueueHistory(AirDCPPClientSettings settings);
     }
