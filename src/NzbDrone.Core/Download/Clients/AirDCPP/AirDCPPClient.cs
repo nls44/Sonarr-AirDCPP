@@ -8,6 +8,7 @@ using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Indexers.AirDCPP;
 using NzbDrone.Core.Localization;
+using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.RemotePathMappings;
 
 namespace NzbDrone.Core.Download.Clients.AirDCPP
@@ -35,7 +36,7 @@ namespace NzbDrone.Core.Download.Clients.AirDCPP
             var results = _airDCPPProxy.GetQueueHistory(Settings);
             return results.Select(r => new DownloadClientItem
             {
-                DownloadClientInfo = DownloadClientItemClientInfo.FromDownloadClient(this),
+                DownloadClientInfo = DownloadClientItemClientInfo.FromDownloadClient(this, false),
                 DownloadId = r.id.ToString(),
                 RemainingTime = TimeSpan.FromSeconds((long)r.seconds_left),
                 RemainingSize = (long)(r.size - r.downloaded_bytes),
@@ -64,9 +65,9 @@ namespace NzbDrone.Core.Download.Clients.AirDCPP
         {
         }
 
-        protected override string AddFromId(string searchInstanceAndResultIds, string title)
+        protected override string AddFromId(string searchInstanceAndResultIds, RemoteEpisode remoteEpisode)
         {
-            return _airDCPPProxy.DownloadBySearchInstanceAndResultId(Settings, searchInstanceAndResultIds, title);
+            return _airDCPPProxy.DownloadBySearchInstanceAndResultId(Settings, searchInstanceAndResultIds, remoteEpisode);
         }
     }
 }

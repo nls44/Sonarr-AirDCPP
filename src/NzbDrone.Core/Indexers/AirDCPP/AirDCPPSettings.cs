@@ -1,5 +1,8 @@
+using System;
+using System.Collections.Generic;
 using FluentValidation;
 using NzbDrone.Core.Annotations;
+using NzbDrone.Core.Languages;
 using NzbDrone.Core.Validation;
 
 namespace NzbDrone.Core.Indexers.AirDCPP
@@ -21,6 +24,8 @@ namespace NzbDrone.Core.Indexers.AirDCPP
         public AirDCPPSettings()
         {
             Delay = 3000;
+            MultiLanguages = Array.Empty<int>();
+            FailDownloads = Array.Empty<int>();
         }
 
         [FieldDefinition(0, Label = "API base URL")]
@@ -34,6 +39,12 @@ namespace NzbDrone.Core.Indexers.AirDCPP
 
         [FieldDefinition(3, Label = "Delay", HelpText = "Time in milliseconds to wait before retrieving hub search results", Advanced = true)]
         public int Delay { get; set; }
+
+        [FieldDefinition(4, Type = FieldType.Select, SelectOptions = typeof(RealLanguageFieldConverter), Label = "IndexerSettingsMultiLanguageRelease", HelpText = "IndexerSettingsMultiLanguageReleaseHelpText", Advanced = true)]
+        public IEnumerable<int> MultiLanguages { get; set; }
+
+        [FieldDefinition(5, Type = FieldType.Select, SelectOptions = typeof(FailDownloads), Label = "IndexerSettingsFailDownloads", HelpText = "IndexerSettingsFailDownloadsHelpText", Advanced = true)]
+        public IEnumerable<int> FailDownloads { get; set; }
 
         public NzbDroneValidationResult Validate()
         {

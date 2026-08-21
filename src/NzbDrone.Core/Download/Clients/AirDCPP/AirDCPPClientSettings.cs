@@ -19,6 +19,7 @@ namespace NzbDrone.Core.Download.Clients.AirDCPP
         public AirDCPPClientSettings()
         {
             BaseUrl = "http://localhost:5600/api/v1";
+            UseSeasonFolder = true;
         }
 
         [FieldDefinition(0, Label = "Host", Type = FieldType.Textbox)]
@@ -35,6 +36,9 @@ namespace NzbDrone.Core.Download.Clients.AirDCPP
 
         [FieldDefinition(4, Label = "Default download directory")]
         public string DownloadDirectory { get; set; }
+
+        [FieldDefinition(5, Label = "UseSeasonFolder", Type = FieldType.Checkbox, HelpText = "UseSeasonFolderHelpText")]
+        public bool UseSeasonFolder { get; set; }
 
         public NzbDroneValidationResult Validate()
         {

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
@@ -11,6 +12,7 @@ using NzbDrone.Common.Serializer;
 using NzbDrone.Core.Download.Clients;
 using NzbDrone.Core.Download.Clients.AirDCPP;
 using NzbDrone.Core.Indexers.AirDCPP.Responses;
+using NzbDrone.Core.Parser.Model;
 
 namespace NzbDrone.Core.Indexers.AirDCPP
 {
@@ -117,17 +119,22 @@ namespace NzbDrone.Core.Indexers.AirDCPP
             }
         }
 
-        public string DownloadBySearchInstanceAndResultId(AirDCPPClientSettings settings, string id, string title)
+        public string DownloadBySearchInstanceAndResultId(AirDCPPClientSettings settings, string id, RemoteEpisode remoteEpisode)
         {
+            var title = remoteEpisode.Release.Title;
             var splitResult = id.Split(':');
             var searchInstanceId = splitResult[0];
             var resultId = splitResult[1];
 
             var downloadRequest = BuildRequest(settings).Resource($"search/{searchInstanceId}/results/{resultId}/download").Post().Build();
 
+            var targetDirectory = GetTargetDirectory(settings, remoteEpisode);
+
+            _logger.Debug("Downloading episode to target directory {0}", targetDirectory);
+
             var query = new HubDownloadQuery
             {
-                target_directory = settings.DownloadDirectory
+                target_directory = targetDirectory
             };
 
             downloadRequest.SetContent(query.ToJson());
@@ -141,11 +148,28 @@ namespace NzbDrone.Core.Indexers.AirDCPP
             while (string.IsNullOrEmpty(downloadBundleId))
             {
                 var queueResults = GetQueueHistory(settings);
-                downloadBundleId = queueResults.Where(result => result.name == title).FirstOrDefault()?.id.ToString();
+                downloadBundleId = queueResults.FirstOrDefault(result => result.name == title)?.id.ToString();
                 Delay(1000);
             }
 
             return downloadBundleId;
+        }
+
+        internal static string GetTargetDirectory(AirDCPPClientSettings settings, RemoteEpisode remoteEpisode)
+        {
+            if (!settings.UseSeasonFolder)
+            {
+                return settings.DownloadDirectory;
+            }
+
+            var targetDirectory = Path.Combine(settings.DownloadDirectory, remoteEpisode.Series.Title);
+
+            if (remoteEpisode.Series.SeasonFolder)
+            {
+                targetDirectory = Path.Combine(targetDirectory, $"Season {remoteEpisode.ParsedEpisodeInfo.SeasonNumber}");
+            }
+
+            return $"{targetDirectory}{Path.DirectorySeparatorChar}";
         }
 
         public List<QueueResult> GetQueueHistory(AirDCPPClientSettings settings)
