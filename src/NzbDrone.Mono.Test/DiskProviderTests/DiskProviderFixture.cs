@@ -139,6 +139,19 @@ namespace NzbDrone.Mono.Test.DiskProviderTests
             File.ReadAllText(destination).Should().Be("Some content");
         }
 
+        [Test]
+        public void should_get_real_path_using_symbolic_link_resolver()
+        {
+            const string symlinkPath = "/media/series/episode.mkv";
+            const string realPath = "/storage/series/episode.mkv";
+
+            Mocker.GetMock<ISymbolicLinkResolver>()
+                .Setup(v => v.GetCompleteRealPath(symlinkPath))
+                .Returns(realPath);
+
+            Subject.GetRealPath(symlinkPath).Should().Be(realPath);
+        }
+
         private void GivenSpecialMount(string rootDir)
         {
             Mocker.GetMock<ISymbolicLinkResolver>()

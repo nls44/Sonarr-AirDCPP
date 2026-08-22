@@ -475,15 +475,7 @@ namespace NzbDrone.Mono.Disk
 
         public override string GetRealPath(string symlinkPath)
         {
-            try
-            {
-                return UnixPath.GetRealPath(symlinkPath);
-            }
-            catch (Exception ex)
-            {
-                _logger.Debug(ex, "Get real path for '{0}' failed.", symlinkPath);
-                return symlinkPath;
-            }
+            return _symLinkResolver.GetCompleteRealPath(symlinkPath);
         }
 
         public override string GetDirectoryName(string path)
