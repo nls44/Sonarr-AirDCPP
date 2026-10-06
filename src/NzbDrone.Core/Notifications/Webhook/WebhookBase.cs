@@ -19,14 +19,16 @@ namespace NzbDrone.Core.Notifications.Webhook
         protected readonly ILocalizationService _localizationService;
         private readonly ITagRepository _tagRepository;
         private readonly IMapCoversToLocal _mediaCoverService;
+        private readonly IMediaPathResolver _pathResolver;
 
-        protected WebhookBase(IConfigFileProvider configFileProvider, IConfigService configService, ILocalizationService localizationService, ITagRepository tagRepository, IMapCoversToLocal mediaCoverService)
+        protected WebhookBase(IConfigFileProvider configFileProvider, IConfigService configService, ILocalizationService localizationService, ITagRepository tagRepository, IMapCoversToLocal mediaCoverService, IMediaPathResolver pathResolver)
         {
             _configFileProvider = configFileProvider;
             _configService = configService;
             _localizationService = localizationService;
             _tagRepository = tagRepository;
             _mediaCoverService = mediaCoverService;
+            _pathResolver = pathResolver;
         }
 
         protected WebhookGrabPayload BuildOnGrabPayload(GrabMessage message)
@@ -52,6 +54,8 @@ namespace NzbDrone.Core.Notifications.Webhook
         protected WebhookImportPayload BuildOnDownloadPayload(DownloadMessage message)
         {
             var episodeFile = message.EpisodeFile;
+            var webhookEpisodeFile = ResolveEpisodeFile(new WebhookEpisodeFile(episodeFile));
+            webhookEpisodeFile.SourcePath = message.SourcePath;
 
             var payload = new WebhookImportPayload
             {
@@ -60,10 +64,7 @@ namespace NzbDrone.Core.Notifications.Webhook
                 ApplicationUrl = _configService.ApplicationUrl,
                 Series = GetSeries(message.Series),
                 Episodes = episodeFile.Episodes.Value.ConvertAll(x => new WebhookEpisode(x)),
-                EpisodeFile = new WebhookEpisodeFile(episodeFile)
-                {
-                    SourcePath = message.SourcePath
-                },
+                EpisodeFile = webhookEpisodeFile,
                 Release = new WebhookGrabbedRelease(message.Release, episodeFile.IndexerFlags, episodeFile.ReleaseType),
                 IsUpgrade = message.OldFiles.Any(),
                 DownloadClient = message.DownloadClientInfo?.Name,
@@ -74,11 +75,11 @@ namespace NzbDrone.Core.Notifications.Webhook
 
             if (message.OldFiles.Any())
             {
-                payload.DeletedFiles = message.OldFiles.ConvertAll(x => new WebhookEpisodeFile(x.EpisodeFile)
+                payload.DeletedFiles = message.OldFiles.ConvertAll(x => ResolveEpisodeFile(new WebhookEpisodeFile(x.EpisodeFile)
                 {
                     Path = Path.Combine(message.Series.Path, x.EpisodeFile.RelativePath),
                     RecycleBinPath = x.RecycleBinPath
-                });
+                }));
             }
 
             return payload;
@@ -95,13 +96,13 @@ namespace NzbDrone.Core.Notifications.Webhook
                 ApplicationUrl = _configService.ApplicationUrl,
                 Series = GetSeries(message.Series),
                 Episodes = message.Episodes.ConvertAll(x => new WebhookEpisode(x)),
-                EpisodeFiles = episodeFiles.ConvertAll(e => new WebhookEpisodeFile(e)),
+                EpisodeFiles = episodeFiles.ConvertAll(e => ResolveEpisodeFile(new WebhookEpisodeFile(e))),
                 Release = new WebhookGrabbedRelease(message.Release, episodeFiles.First().IndexerFlags, episodeFiles.First().ReleaseType),
                 DownloadClient = message.DownloadClientInfo?.Name,
                 DownloadClientType = message.DownloadClientInfo?.Type,
                 DownloadId = message.DownloadId,
                 SourcePath = message.SourcePath,
-                DestinationPath = message.DestinationPath
+                DestinationPath = _pathResolver.Resolve(message.DestinationPath)
             };
 
             return payload;
@@ -116,7 +117,7 @@ namespace NzbDrone.Core.Notifications.Webhook
                 ApplicationUrl = _configService.ApplicationUrl,
                 Series = GetSeries(deleteMessage.Series),
                 Episodes = deleteMessage.EpisodeFile.Episodes.Value.ConvertAll(x => new WebhookEpisode(x)),
-                EpisodeFile = new WebhookEpisodeFile(deleteMessage.EpisodeFile),
+                EpisodeFile = ResolveEpisodeFile(new WebhookEpisodeFile(deleteMessage.EpisodeFile)),
                 DeleteReason = deleteMessage.Reason
             };
         }
@@ -152,7 +153,7 @@ namespace NzbDrone.Core.Notifications.Webhook
                 InstanceName = _configFileProvider.InstanceName,
                 ApplicationUrl = _configService.ApplicationUrl,
                 Series = GetSeries(series),
-                RenamedEpisodeFiles = renamedFiles.ConvertAll(x => new WebhookRenamedEpisodeFile(x))
+                RenamedEpisodeFiles = renamedFiles.ConvertAll(x => ResolveEpisodeFile(new WebhookRenamedEpisodeFile(x)))
             };
         }
 
@@ -254,7 +255,23 @@ namespace NzbDrone.Core.Notifications.Webhook
 
             _mediaCoverService.ConvertToLocalUrls(series.Id, series.Images);
 
-            return new WebhookSeries(series, GetTagLabels(series));
+            var webhookSeries = new WebhookSeries(series, GetTagLabels(series));
+            webhookSeries.Path = _pathResolver.Resolve(webhookSeries.Path);
+
+            return webhookSeries;
+        }
+
+        private T ResolveEpisodeFile<T>(T episodeFile)
+            where T : WebhookEpisodeFile
+        {
+            episodeFile.Path = _pathResolver.Resolve(episodeFile.Path);
+
+            if (episodeFile is WebhookRenamedEpisodeFile renamedEpisodeFile)
+            {
+                renamedEpisodeFile.PreviousPath = _pathResolver.Resolve(renamedEpisodeFile.PreviousPath);
+            }
+
+            return episodeFile;
         }
 
         private List<string> GetTagLabels(Series series)

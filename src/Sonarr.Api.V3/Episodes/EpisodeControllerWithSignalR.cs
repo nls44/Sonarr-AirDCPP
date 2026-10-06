@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
-using NzbDrone.Common.Disk;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.Datastore.Events;
 using NzbDrone.Core.DecisionEngine.Specifications;
 using NzbDrone.Core.Download;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Tv;
@@ -26,7 +26,7 @@ namespace Sonarr.Api.V3.Episodes
         protected readonly IUpgradableSpecification _upgradableSpecification;
         protected readonly ICustomFormatCalculationService _formatCalculator;
         private readonly IConfigService _configService;
-        private readonly IDiskProvider _diskProvider;
+        private readonly IMediaPathResolver _pathResolver;
 
         protected EpisodeControllerWithSignalR(IEpisodeService episodeService,
                                            ISeriesService seriesService,
@@ -34,7 +34,7 @@ namespace Sonarr.Api.V3.Episodes
                                            ICustomFormatCalculationService formatCalculator,
                                            IBroadcastSignalRMessage signalRBroadcaster,
                                            IConfigService configService,
-                                           IDiskProvider diskProvider)
+                                           IMediaPathResolver pathResolver)
             : base(signalRBroadcaster)
         {
             _episodeService = episodeService;
@@ -42,7 +42,7 @@ namespace Sonarr.Api.V3.Episodes
             _upgradableSpecification = upgradableSpecification;
             _formatCalculator = formatCalculator;
             _configService = configService;
-            _diskProvider = diskProvider;
+            _pathResolver = pathResolver;
         }
 
         protected EpisodeControllerWithSignalR(IEpisodeService episodeService,
@@ -85,7 +85,7 @@ namespace Sonarr.Api.V3.Episodes
                         _upgradableSpecification,
                         _formatCalculator,
                         _configService.CopyUsingSymlinks,
-                        _diskProvider);
+                        _pathResolver);
                 }
 
                 if (includeImages)
@@ -123,7 +123,7 @@ namespace Sonarr.Api.V3.Episodes
                             _upgradableSpecification,
                             _formatCalculator,
                             _configService.CopyUsingSymlinks,
-                            _diskProvider);
+                            _pathResolver);
                     }
 
                     if (includeImages)

@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
-using NzbDrone.Common.Disk;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.Datastore.Events;
 using NzbDrone.Core.DecisionEngine.Specifications;
 using NzbDrone.Core.Download;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Tv;
@@ -25,7 +25,7 @@ public abstract class EpisodeControllerWithSignalR : RestControllerWithSignalR<E
     protected readonly IUpgradableSpecification _upgradableSpecification;
     protected readonly ICustomFormatCalculationService _formatCalculator;
     protected readonly IConfigService _configService;
-    protected readonly IDiskProvider _diskProvider;
+    protected readonly IMediaPathResolver _pathResolver;
 
     protected EpisodeControllerWithSignalR(IEpisodeService episodeService,
                                        ISeriesService seriesService,
@@ -33,7 +33,7 @@ public abstract class EpisodeControllerWithSignalR : RestControllerWithSignalR<E
                                        ICustomFormatCalculationService formatCalculator,
                                        IBroadcastSignalRMessage signalRBroadcaster,
                                        IConfigService configService,
-                                       IDiskProvider diskProvider)
+                                       IMediaPathResolver pathResolver)
         : base(signalRBroadcaster)
     {
         _episodeService = episodeService;
@@ -41,7 +41,7 @@ public abstract class EpisodeControllerWithSignalR : RestControllerWithSignalR<E
         _upgradableSpecification = upgradableSpecification;
         _formatCalculator = formatCalculator;
         _configService = configService;
-        _diskProvider = diskProvider;
+        _pathResolver = pathResolver;
     }
 
     protected EpisodeControllerWithSignalR(IEpisodeService episodeService,
@@ -51,7 +51,7 @@ public abstract class EpisodeControllerWithSignalR : RestControllerWithSignalR<E
                                        IBroadcastSignalRMessage signalRBroadcaster,
                                        string resource,
                                        IConfigService configService,
-                                       IDiskProvider diskProvider)
+                                       IMediaPathResolver pathResolver)
         : base(signalRBroadcaster)
     {
         _episodeService = episodeService;
@@ -59,7 +59,7 @@ public abstract class EpisodeControllerWithSignalR : RestControllerWithSignalR<E
         _upgradableSpecification = upgradableSpecification;
         _formatCalculator = formatCalculator;
         _configService = configService;
-        _diskProvider = diskProvider;
+        _pathResolver = pathResolver;
     }
 
     protected override EpisodeResource GetResourceById(int id)
@@ -84,7 +84,7 @@ public abstract class EpisodeControllerWithSignalR : RestControllerWithSignalR<E
 
             if (includeEpisodeFile && episode.EpisodeFileId != 0)
             {
-                resource.EpisodeFile = episode.EpisodeFile.Value.ToResource(series, _upgradableSpecification, _formatCalculator, _configService.CopyUsingSymlinks, _diskProvider);
+                resource.EpisodeFile = episode.EpisodeFile.Value.ToResource(series, _upgradableSpecification, _formatCalculator, _configService.CopyUsingSymlinks, _pathResolver);
             }
 
             if (includeImages)
@@ -118,7 +118,7 @@ public abstract class EpisodeControllerWithSignalR : RestControllerWithSignalR<E
 
                 if (includeEpisodeFile && episode.EpisodeFileId != 0)
                 {
-                    resource.EpisodeFile = episode.EpisodeFile.Value.ToResource(series, _upgradableSpecification, _formatCalculator, _configService.CopyUsingSymlinks, _diskProvider);
+                    resource.EpisodeFile = episode.EpisodeFile.Value.ToResource(series, _upgradableSpecification, _formatCalculator, _configService.CopyUsingSymlinks, _pathResolver);
                 }
 
                 if (includeImages)

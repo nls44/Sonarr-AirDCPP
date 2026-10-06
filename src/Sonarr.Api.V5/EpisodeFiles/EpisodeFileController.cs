@@ -2,7 +2,6 @@ using System.Net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using NzbDrone.Common.Disk;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.Datastore.Events;
@@ -34,7 +33,7 @@ public class EpisodeFileController : RestControllerWithSignalR<EpisodeFileResour
     private readonly ICustomFormatCalculationService _formatCalculator;
     private readonly IUpgradableSpecification _upgradableSpecification;
     private readonly IConfigService _configService;
-    private readonly IDiskProvider _diskProvider;
+    private readonly IMediaPathResolver _pathResolver;
 
     public EpisodeFileController(IBroadcastSignalRMessage signalRBroadcaster,
                          IMediaFileService mediaFileService,
@@ -43,7 +42,7 @@ public class EpisodeFileController : RestControllerWithSignalR<EpisodeFileResour
                          ICustomFormatCalculationService formatCalculator,
                          IUpgradableSpecification upgradableSpecification,
                          IConfigService configService,
-                         IDiskProvider diskProvider)
+                         IMediaPathResolver pathResolver)
         : base(signalRBroadcaster)
     {
         _mediaFileService = mediaFileService;
@@ -52,7 +51,7 @@ public class EpisodeFileController : RestControllerWithSignalR<EpisodeFileResour
         _formatCalculator = formatCalculator;
         _upgradableSpecification = upgradableSpecification;
         _configService = configService;
-        _diskProvider = diskProvider;
+        _pathResolver = pathResolver;
     }
 
     protected override EpisodeFileResource GetResourceById(int id)
@@ -60,7 +59,7 @@ public class EpisodeFileController : RestControllerWithSignalR<EpisodeFileResour
         var episodeFile = _mediaFileService.Get(id);
         var series = _seriesService.GetSeries(episodeFile.SeriesId);
 
-        var resource = episodeFile.ToResource(series, _upgradableSpecification, _formatCalculator, _configService.CopyUsingSymlinks, _diskProvider);
+        var resource = episodeFile.ToResource(series, _upgradableSpecification, _formatCalculator, _configService.CopyUsingSymlinks, _pathResolver);
 
         return resource;
     }
@@ -84,7 +83,7 @@ public class EpisodeFileController : RestControllerWithSignalR<EpisodeFileResour
                 return TypedResults.Ok(new List<EpisodeFileResource>());
             }
 
-            return TypedResults.Ok(files.ConvertAll(e => e.ToResource(series, _upgradableSpecification, _formatCalculator, _configService.CopyUsingSymlinks, _diskProvider)));
+            return TypedResults.Ok(files.ConvertAll(e => e.ToResource(series, _upgradableSpecification, _formatCalculator, _configService.CopyUsingSymlinks, _pathResolver)));
         }
         else
         {
@@ -92,7 +91,7 @@ public class EpisodeFileController : RestControllerWithSignalR<EpisodeFileResour
 
             return TypedResults.Ok(episodeFiles.GroupBy(e => e.SeriesId)
                                .SelectMany(f => f.ToList()
-                                                 .ConvertAll(e => e.ToResource(_seriesService.GetSeries(f.Key), _upgradableSpecification, _formatCalculator, _configService.CopyUsingSymlinks, _diskProvider)))
+                                                 .ConvertAll(e => e.ToResource(_seriesService.GetSeries(f.Key), _upgradableSpecification, _formatCalculator, _configService.CopyUsingSymlinks, _pathResolver)))
                                .ToList());
         }
     }
@@ -196,7 +195,7 @@ public class EpisodeFileController : RestControllerWithSignalR<EpisodeFileResour
 
         var series = _seriesService.GetSeries(episodeFiles.First().SeriesId);
 
-        return TypedResults.Ok(episodeFiles.ConvertAll(f => f.ToResource(series, _upgradableSpecification, _formatCalculator, _configService.CopyUsingSymlinks, _diskProvider)));
+        return TypedResults.Ok(episodeFiles.ConvertAll(f => f.ToResource(series, _upgradableSpecification, _formatCalculator, _configService.CopyUsingSymlinks, _pathResolver)));
     }
 
     [NonAction]

@@ -1,8 +1,8 @@
 using System;
-using System.IO;
 using System.Linq;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.History;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Tv.Events;
@@ -26,11 +26,13 @@ namespace NzbDrone.Core.Download.History
     {
         private readonly IDownloadHistoryRepository _repository;
         private readonly IHistoryService _historyService;
+        private readonly IMediaPathResolver _pathResolver;
 
-        public DownloadHistoryService(IDownloadHistoryRepository repository, IHistoryService historyService)
+        public DownloadHistoryService(IDownloadHistoryRepository repository, IHistoryService historyService, IMediaPathResolver pathResolver)
         {
             _repository = repository;
             _historyService = historyService;
+            _pathResolver = pathResolver;
         }
 
         public bool DownloadAlreadyImported(string downloadId)
@@ -157,7 +159,7 @@ namespace NzbDrone.Core.Download.History
             history.Data.Add("DownloadClient", message.DownloadClientInfo.Type);
             history.Data.Add("DownloadClientName", message.DownloadClientInfo.Name);
             history.Data.Add("SourcePath", message.EpisodeInfo.Path);
-            history.Data.Add("DestinationPath", Path.Combine(message.EpisodeInfo.Series.Path, message.ImportedEpisode.RelativePath));
+            history.Data.Add("DestinationPath", _pathResolver.ResolveEpisodeFilePath(message.EpisodeInfo.Series.Path, message.ImportedEpisode.RelativePath));
 
             _repository.Insert(history);
         }

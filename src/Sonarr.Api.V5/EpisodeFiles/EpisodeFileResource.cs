@@ -1,4 +1,3 @@
-using NzbDrone.Common.Disk;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.DecisionEngine.Specifications;
 using NzbDrone.Core.Languages;
@@ -33,7 +32,7 @@ namespace Sonarr.Api.V5.EpisodeFiles
 
     public static class EpisodeFileResourceMapper
     {
-        public static EpisodeFileResource ToResource(this EpisodeFile model, NzbDrone.Core.Tv.Series series, IUpgradableSpecification upgradableSpecification, ICustomFormatCalculationService formatCalculationService, bool resolveSymlinks, IDiskProvider diskProvider)
+        public static EpisodeFileResource ToResource(this EpisodeFile model, NzbDrone.Core.Tv.Series series, IUpgradableSpecification upgradableSpecification, ICustomFormatCalculationService formatCalculationService, bool resolveSymlinks, IMediaPathResolver pathResolver)
         {
             model.Series = series;
             var customFormats = formatCalculationService?.ParseCustomFormat(model, model.Series) ?? [];
@@ -43,7 +42,7 @@ namespace Sonarr.Api.V5.EpisodeFiles
 
             if (resolveSymlinks)
             {
-                fullPath = diskProvider.GetRealPath(fullPath);
+                fullPath = pathResolver.ResolveEpisodeFilePath(series.Path, model.RelativePath);
             }
 
             return new EpisodeFileResource

@@ -15,8 +15,8 @@ namespace NzbDrone.Core.Notifications.Webhook
     {
         private readonly IWebhookProxy _proxy;
 
-        public Webhook(IWebhookProxy proxy, IConfigFileProvider configFileProvider, IConfigService configService, ILocalizationService localizationService, ITagRepository tagRepository, IMapCoversToLocal mediaCoverService)
-            : base(configFileProvider, configService, localizationService, tagRepository, mediaCoverService)
+        public Webhook(IWebhookProxy proxy, IConfigFileProvider configFileProvider, IConfigService configService, ILocalizationService localizationService, ITagRepository tagRepository, IMapCoversToLocal mediaCoverService, IMediaPathResolver pathResolver)
+            : base(configFileProvider, configService, localizationService, tagRepository, mediaCoverService, pathResolver)
         {
             _proxy = proxy;
         }

@@ -33,7 +33,7 @@ namespace NzbDrone.Core.Notifications.Plex.Server
         private readonly IRootFolderService _rootFolderService;
         private readonly ILocalizationService _localizationService;
         private readonly IConfigService _configService;
-        private readonly IDiskProvider _diskProvider;
+        private readonly IMediaPathResolver _pathResolver;
         private readonly Logger _logger;
 
         public PlexServerService(
@@ -42,7 +42,7 @@ namespace NzbDrone.Core.Notifications.Plex.Server
             IRootFolderService rootFolderService,
             ILocalizationService localizationService,
             IConfigService configService,
-            IDiskProvider diskProvider,
+            IMediaPathResolver pathResolver,
             Logger logger)
         {
             _versionCache = cacheManager.GetCache<Version>(GetType(), "versionCache");
@@ -50,7 +50,7 @@ namespace NzbDrone.Core.Notifications.Plex.Server
             _rootFolderService = rootFolderService;
             _localizationService = localizationService;
             _configService = configService;
-            _diskProvider = diskProvider;
+            _pathResolver = pathResolver;
             _logger = logger;
         }
 
@@ -93,7 +93,7 @@ namespace NzbDrone.Core.Notifications.Plex.Server
             {
                 foreach (var episode in episodes)
                 {
-                    var episodeLocation = _diskProvider.GetParentFolder(episode.Path).TrimEnd(Path.DirectorySeparatorChar);
+                    var episodeLocation = _pathResolver.Resolve(episode.Path).GetParentPath().TrimEnd(Path.DirectorySeparatorChar);
 
                     _logger.Debug("Searching matching section for {0}", episodeLocation);
                     var matchingSections = sections.Where(section => section.Locations.Any(location =>
@@ -170,8 +170,9 @@ namespace NzbDrone.Core.Notifications.Plex.Server
 
         private void UpdateSections(Series series, List<PlexSection> sections, PlexServerSettings settings)
         {
-            var rootFolderPath = _rootFolderService.GetBestRootFolderPath(series.Path);
-            var seriesRelativePath = rootFolderPath.GetRelativePath(series.Path);
+            var seriesPath = _configService.CopyUsingSymlinks ? _pathResolver.Resolve(series.Path) : series.Path;
+            var rootFolderPath = _rootFolderService.GetBestRootFolderPath(seriesPath);
+            var seriesRelativePath = rootFolderPath.GetRelativePath(seriesPath);
 
             // Try to update a matching section location before falling back to updating all section locations.
             foreach (var section in sections)

@@ -12,11 +12,13 @@ namespace NzbDrone.Core.Notifications.Synology
     public class SynologyIndexer : NotificationBase<SynologyIndexerSettings>
     {
         private readonly ISynologyIndexerProxy _indexerProxy;
+        private readonly IMediaPathResolver _pathResolver;
         private readonly ILocalizationService _localizationService;
 
-        public SynologyIndexer(ISynologyIndexerProxy indexerProxy, ILocalizationService localizationService)
+        public SynologyIndexer(ISynologyIndexerProxy indexerProxy, IMediaPathResolver pathResolver, ILocalizationService localizationService)
         {
             _indexerProxy = indexerProxy;
+            _pathResolver = pathResolver;
             _localizationService = localizationService;
         }
 
@@ -29,13 +31,13 @@ namespace NzbDrone.Core.Notifications.Synology
             {
                 foreach (var oldFile in message.OldFiles)
                 {
-                    var fullPath = Path.Combine(message.Series.Path, oldFile.EpisodeFile.RelativePath);
+                    var fullPath = _pathResolver.ResolveEpisodeFilePath(message.Series.Path, oldFile.EpisodeFile.RelativePath);
 
                     _indexerProxy.DeleteFile(fullPath);
                 }
 
                 {
-                    var fullPath = Path.Combine(message.Series.Path, message.EpisodeFile.RelativePath);
+                    var fullPath = _pathResolver.ResolveEpisodeFilePath(message.Series.Path, message.EpisodeFile.RelativePath);
 
                     _indexerProxy.AddFile(fullPath);
                 }
@@ -46,7 +48,7 @@ namespace NzbDrone.Core.Notifications.Synology
         {
             if (Settings.UpdateLibrary)
             {
-                _indexerProxy.UpdateFolder(message.Series.Path);
+                _indexerProxy.UpdateFolder(_pathResolver.Resolve(message.Series.Path));
             }
         }
 
@@ -54,7 +56,7 @@ namespace NzbDrone.Core.Notifications.Synology
         {
             if (Settings.UpdateLibrary)
             {
-                _indexerProxy.UpdateFolder(series.Path);
+                _indexerProxy.UpdateFolder(_pathResolver.Resolve(series.Path));
             }
         }
 
@@ -62,7 +64,7 @@ namespace NzbDrone.Core.Notifications.Synology
         {
             if (Settings.UpdateLibrary)
             {
-                var fullPath = Path.Combine(deleteMessage.Series.Path, deleteMessage.EpisodeFile.RelativePath);
+                var fullPath = _pathResolver.ResolveEpisodeFilePath(deleteMessage.Series.Path, deleteMessage.EpisodeFile.RelativePath);
                 _indexerProxy.DeleteFile(fullPath);
             }
         }
@@ -71,7 +73,7 @@ namespace NzbDrone.Core.Notifications.Synology
         {
             if (Settings.UpdateLibrary)
             {
-                _indexerProxy.UpdateFolder(message.Series.Path);
+                _indexerProxy.UpdateFolder(_pathResolver.Resolve(message.Series.Path));
             }
         }
 
@@ -81,7 +83,7 @@ namespace NzbDrone.Core.Notifications.Synology
             {
                 if (Settings.UpdateLibrary)
                 {
-                    _indexerProxy.DeleteFolder(deleteMessage.Series.Path);
+                    _indexerProxy.DeleteFolder(_pathResolver.Resolve(deleteMessage.Series.Path));
                 }
             }
         }

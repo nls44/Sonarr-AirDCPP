@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
-using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.DecisionEngine.Specifications;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Tags;
 using NzbDrone.Core.Tv;
 using NzbDrone.SignalR;
@@ -27,8 +27,8 @@ namespace Sonarr.Api.V3.Calendar
                             ITagService tagService,
                             ICustomFormatCalculationService formatCalculator,
                             IConfigService configService,
-                            IDiskProvider diskProvider)
-            : base(episodeService, seriesService, qualityUpgradableSpecification, formatCalculator, signalR, configService, diskProvider)
+                            IMediaPathResolver pathResolver)
+            : base(episodeService, seriesService, qualityUpgradableSpecification, formatCalculator, signalR, configService, pathResolver)
         {
             _tagService = tagService;
         }

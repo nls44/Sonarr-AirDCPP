@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Core.MediaFiles;
@@ -19,6 +20,13 @@ namespace NzbDrone.Core.Test.NotificationTests
         [SetUp]
         public void SetUp()
         {
+            Mocker.GetMock<IMediaPathResolver>()
+                .Setup(v => v.Resolve(It.IsAny<string>()))
+                .Returns((string path) => path);
+            Mocker.GetMock<IMediaPathResolver>()
+                .Setup(v => v.ResolveEpisodeFilePath(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns((string seriesPath, string relativePath) => Path.Combine(seriesPath, relativePath));
+
             _series = new Series()
             {
                 Path = @"C:\Test\".AsOsAgnostic()

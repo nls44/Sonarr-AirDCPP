@@ -16,8 +16,8 @@ namespace NzbDrone.Core.Notifications.Notifiarr
     {
         private readonly INotifiarrProxy _proxy;
 
-        public Notifiarr(INotifiarrProxy proxy, IConfigFileProvider configFileProvider, IConfigService configService, ILocalizationService localizationService, ITagRepository tagRepository, IMapCoversToLocal mediaCoverService)
-            : base(configFileProvider, configService, localizationService, tagRepository, mediaCoverService)
+        public Notifiarr(INotifiarrProxy proxy, IConfigFileProvider configFileProvider, IConfigService configService, ILocalizationService localizationService, ITagRepository tagRepository, IMapCoversToLocal mediaCoverService, IMediaPathResolver pathResolver)
+            : base(configFileProvider, configService, localizationService, tagRepository, mediaCoverService, pathResolver)
         {
             _proxy = proxy;
         }

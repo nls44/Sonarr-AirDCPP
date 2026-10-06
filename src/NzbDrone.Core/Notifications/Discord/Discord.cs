@@ -19,12 +19,14 @@ namespace NzbDrone.Core.Notifications.Discord
     {
         private readonly IDiscordProxy _proxy;
         private readonly IConfigFileProvider _configFileProvider;
+        private readonly IMediaPathResolver _pathResolver;
         private readonly ILocalizationService _localizationService;
 
-        public Discord(IDiscordProxy proxy, IConfigFileProvider configFileProvider, ILocalizationService localizationService)
+        public Discord(IDiscordProxy proxy, IConfigFileProvider configFileProvider, IMediaPathResolver pathResolver, ILocalizationService localizationService)
         {
             _proxy = proxy;
             _configFileProvider = configFileProvider;
+            _pathResolver = pathResolver;
             _localizationService = localizationService;
         }
 
@@ -357,7 +359,7 @@ namespace NzbDrone.Core.Notifications.Discord
         {
             var series = deleteMessage.Series;
             var episodes = deleteMessage.EpisodeFile.Episodes;
-            var deletedFile = deleteMessage.EpisodeFile.Path;
+            var deletedFile = _pathResolver.Resolve(deleteMessage.EpisodeFile.Path);
             var reason = deleteMessage.Reason;
 
             var embed = new Embed

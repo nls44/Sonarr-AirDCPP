@@ -28,6 +28,7 @@ namespace NzbDrone.Core.MediaFiles
         private readonly IConfigService _configService;
         private readonly ITagRepository _tagRepository;
         private readonly IDiskProvider _diskProvider;
+        private readonly IMediaPathResolver _pathResolver;
         private readonly Logger _logger;
 
         public ImportScriptService(IProcessProvider processProvider,
@@ -36,6 +37,7 @@ namespace NzbDrone.Core.MediaFiles
                                    IConfigFileProvider configFileProvider,
                                    ITagRepository tagRepository,
                                    IDiskProvider diskProvider,
+                                   IMediaPathResolver pathResolver,
                                    Logger logger)
         {
             _processProvider = processProvider;
@@ -44,6 +46,7 @@ namespace NzbDrone.Core.MediaFiles
             _configFileProvider = configFileProvider;
             _tagRepository = tagRepository;
             _diskProvider = diskProvider;
+            _pathResolver = pathResolver;
             _logger = logger;
         }
 
@@ -134,7 +137,7 @@ namespace NzbDrone.Core.MediaFiles
             environmentVariables.Add("Sonarr_Series_Id", series.Id.ToString());
             environmentVariables.Add("Sonarr_Series_Title", series.Title);
             environmentVariables.Add("Sonarr_Series_TitleSlug", series.TitleSlug);
-            environmentVariables.Add("Sonarr_Series_Path", series.Path);
+            environmentVariables.Add("Sonarr_Series_Path", _pathResolver.Resolve(series.Path));
             environmentVariables.Add("Sonarr_Series_TvdbId", series.TvdbId.ToString());
             environmentVariables.Add("Sonarr_Series_TvMazeId", series.TvMazeId.ToString());
             environmentVariables.Add("Sonarr_Series_TmdbId", series.TmdbId.ToString());
@@ -192,7 +195,7 @@ namespace NzbDrone.Core.MediaFiles
             if (oldFiles.Any())
             {
                 environmentVariables.Add("Sonarr_DeletedRelativePaths", string.Join("|", oldFiles.Select(e => e.EpisodeFile.RelativePath)));
-                environmentVariables.Add("Sonarr_DeletedPaths", string.Join("|", oldFiles.Select(e => Path.Combine(series.Path, e.EpisodeFile.RelativePath))));
+                environmentVariables.Add("Sonarr_DeletedPaths", string.Join("|", oldFiles.Select(e => _pathResolver.ResolveEpisodeFilePath(series.Path, e.EpisodeFile.RelativePath))));
                 environmentVariables.Add("Sonarr_DeletedDateAdded", string.Join("|", oldFiles.Select(e => e.EpisodeFile.DateAdded)));
                 environmentVariables.Add("Sonarr_DeletedRecycleBinPaths", string.Join("|", oldFiles.Select(e => e.RecycleBinPath ?? string.Empty)));
             }

@@ -33,6 +33,7 @@ namespace NzbDrone.Core.MediaFiles
         private readonly IEpisodeService _episodeService;
         private readonly IBuildFileNames _filenameBuilder;
         private readonly IDiskProvider _diskProvider;
+        private readonly IMediaPathResolver _pathResolver;
         private readonly Logger _logger;
 
         public RenameEpisodeFileService(ISeriesService seriesService,
@@ -42,6 +43,7 @@ namespace NzbDrone.Core.MediaFiles
                                         IEpisodeService episodeService,
                                         IBuildFileNames filenameBuilder,
                                         IDiskProvider diskProvider,
+                                        IMediaPathResolver pathResolver,
                                         Logger logger)
         {
             _seriesService = seriesService;
@@ -51,6 +53,7 @@ namespace NzbDrone.Core.MediaFiles
             _episodeService = episodeService;
             _filenameBuilder = filenameBuilder;
             _diskProvider = diskProvider;
+            _pathResolver = pathResolver;
             _logger = logger;
         }
 
@@ -134,7 +137,7 @@ namespace NzbDrone.Core.MediaFiles
             foreach (var episodeFile in episodeFiles)
             {
                 var previousRelativePath = episodeFile.RelativePath;
-                var previousPath = Path.Combine(series.Path, episodeFile.RelativePath);
+                var previousPath = _pathResolver.ResolveEpisodeFilePath(series.Path, episodeFile.RelativePath);
 
                 try
                 {

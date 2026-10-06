@@ -40,11 +40,13 @@ namespace NzbDrone.Core.History
                                   IHandle<DownloadIgnoredEvent>
     {
         private readonly IHistoryRepository _historyRepository;
+        private readonly IMediaPathResolver _pathResolver;
         private readonly Logger _logger;
 
-        public HistoryService(IHistoryRepository historyRepository, Logger logger)
+        public HistoryService(IHistoryRepository historyRepository, IMediaPathResolver pathResolver, Logger logger)
         {
             _historyRepository = historyRepository;
+            _pathResolver = pathResolver;
             _logger = logger;
         }
 
@@ -223,7 +225,7 @@ namespace NzbDrone.Core.History
 
                 history.Data.Add("FileId", message.ImportedEpisode.Id.ToString());
                 history.Data.Add("DroppedPath", message.EpisodeInfo.Path);
-                history.Data.Add("ImportedPath", Path.Combine(message.EpisodeInfo.Series.Path, message.ImportedEpisode.RelativePath));
+                history.Data.Add("ImportedPath", _pathResolver.ResolveEpisodeFilePath(message.EpisodeInfo.Series.Path, message.ImportedEpisode.RelativePath));
                 history.Data.Add("DownloadClient", message.DownloadClientInfo?.Type);
                 history.Data.Add("DownloadClientName", message.DownloadClientInfo?.Name);
                 history.Data.Add("ReleaseGroup", message.EpisodeInfo.ReleaseGroup);
@@ -284,7 +286,7 @@ namespace NzbDrone.Core.History
                     EventType = EpisodeHistoryEventType.EpisodeFileDeleted,
                     Date = DateTime.UtcNow,
                     Quality = message.EpisodeFile.Quality,
-                    SourceTitle = message.EpisodeFile.Path,
+                    SourceTitle = _pathResolver.Resolve(message.EpisodeFile.Path),
                     SeriesId = message.EpisodeFile.SeriesId,
                     EpisodeId = episode.Id,
                     Languages = message.EpisodeFile.Languages
@@ -302,9 +304,9 @@ namespace NzbDrone.Core.History
 
         public void Handle(EpisodeFileRenamedEvent message)
         {
-            var sourcePath = message.OriginalPath;
+            var sourcePath = _pathResolver.Resolve(message.OriginalPath);
             var sourceRelativePath = message.Series.Path.GetRelativePath(message.OriginalPath);
-            var path = Path.Combine(message.Series.Path, message.EpisodeFile.RelativePath);
+            var path = _pathResolver.ResolveEpisodeFilePath(message.Series.Path, message.EpisodeFile.RelativePath);
             var relativePath = message.EpisodeFile.RelativePath;
 
             foreach (var episode in message.EpisodeFile.Episodes.Value)

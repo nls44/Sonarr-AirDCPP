@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
-using NzbDrone.Common.Disk;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.DecisionEngine.Specifications;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Tv;
 using NzbDrone.SignalR;
 using Sonarr.Api.V3.Episodes;
@@ -23,8 +23,8 @@ namespace Sonarr.Api.V3.Wanted
                              ICustomFormatCalculationService formatCalculator,
                              IBroadcastSignalRMessage signalRBroadcaster,
                              IConfigService configService,
-                             IDiskProvider diskProvider)
-            : base(episodeService, seriesService, upgradableSpecification, formatCalculator, signalRBroadcaster, configService, diskProvider)
+                             IMediaPathResolver pathResolver)
+            : base(episodeService, seriesService, upgradableSpecification, formatCalculator, signalRBroadcaster, configService, pathResolver)
         {
         }
 

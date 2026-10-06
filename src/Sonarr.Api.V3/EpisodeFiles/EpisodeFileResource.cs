@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using NzbDrone.Common.Disk;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.DecisionEngine.Specifications;
 using NzbDrone.Core.Languages;
@@ -41,7 +40,7 @@ namespace Sonarr.Api.V3.EpisodeFiles
             IUpgradableSpecification upgradableSpecification,
             ICustomFormatCalculationService formatCalculationService,
             bool resolveSymlinks,
-            IDiskProvider diskProvider)
+            IMediaPathResolver pathResolver)
         {
             if (model == null)
             {
@@ -56,7 +55,7 @@ namespace Sonarr.Api.V3.EpisodeFiles
 
             if (resolveSymlinks)
             {
-                fullPath = diskProvider.GetRealPath(fullPath);
+                fullPath = pathResolver.ResolveEpisodeFilePath(series.Path, model.RelativePath);
             }
 
             return new EpisodeFileResource
