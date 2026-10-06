@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NLog;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.IndexerSearch.Definitions;
 
@@ -40,6 +41,7 @@ namespace NzbDrone.Core.Indexers.AirDCPP
         private IndexerPageableRequestChain GetDefaultSearchRequest(string series, List<(int Season, int Episode)> episodes)
         {
             var pageableRequests = new IndexerPageableRequestChain();
+            series = series.RemoveDiacritics();
 
             foreach (var episode in episodes)
             {
