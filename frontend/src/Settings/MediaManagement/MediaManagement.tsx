@@ -272,7 +272,9 @@ function MediaManagement() {
                     isAdvanced={true}
                     size={sizes.MEDIUM}
                   >
-                    <FormLabel>{translate('UseSymlinksInsteadOfCopy')}</FormLabel>
+                    <FormLabel>
+                      {translate('UseSymlinksInsteadOfCopy')}
+                    </FormLabel>
                     <FormInputHelpText
                       text={translate('CopyUsingSymlinksSeriesHelpText')}
                     />

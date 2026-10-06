@@ -98,7 +98,9 @@ function AddDownloadClientModalContent({
               ))}
             </div>
 
-            <div className={styles.groupLegend}>{translate('DirectConnect')}</div>
+            <div className={styles.groupLegend}>
+              {translate('DirectConnect')}
+            </div>
 
             <div>
               {directConnectDownloadClients.map((downloadClient) => (

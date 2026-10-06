@@ -91,7 +91,9 @@ function AddIndexerModalContent({
             </div>
 
             <div className={styles.group}>
-              <h3 className={styles.groupHeading}>{translate('DirectConnect')}</h3>
+              <h3 className={styles.groupHeading}>
+                {translate('DirectConnect')}
+              </h3>
 
               {directConnectIndexers.map((indexer) => (
                 <AddIndexerItem
