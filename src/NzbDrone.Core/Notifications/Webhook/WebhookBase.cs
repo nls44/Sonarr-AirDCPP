@@ -253,7 +253,7 @@ namespace NzbDrone.Core.Notifications.Webhook
                 return null;
             }
 
-            _mediaCoverService.ConvertToLocalUrls(series.Id, series.Images);
+            _mediaCoverService.ConvertToLocalUrls(series.Id, series.Images, series.Added);
 
             var webhookSeries = new WebhookSeries(series, GetTagLabels(series));
             webhookSeries.Path = _pathResolver.Resolve(webhookSeries.Path);

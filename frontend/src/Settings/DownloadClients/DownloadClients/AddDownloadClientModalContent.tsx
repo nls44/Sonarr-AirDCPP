@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import Alert from 'Components/Alert';
-import FieldSet from 'Components/FieldSet';
 import Button from 'Components/Link/Button';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import ModalBody from 'Components/Modal/ModalBody';
@@ -15,7 +14,7 @@ import {
   DownloadClientModel,
   useDownloadClientSchema,
 } from './useDownloadClients';
-import styles from './AddDownloadClientModalContent.css';
+import styles from './AddDownloadClientModalContent.module.css';
 
 export interface AddDownloadClientModalContentProps {
   onDownloadClientSelect: (selectedSchema: SelectedSchema) => void;
@@ -72,59 +71,49 @@ function AddDownloadClientModalContent({
         ) : null}
 
         {isSchemaFetched && !schemaError ? (
-          <div>
-            <Alert kind={kinds.INFO}>
-              <div>{translate('SupportedDownloadClients')}</div>
-              <div>{translate('SupportedDownloadClientsMoreInfo')}</div>
-            </Alert>
+          <div className={styles.downloadClients}>
+            <div className={styles.groupLegend}>{translate('Usenet')}</div>
 
-            <FieldSet legend={translate('Usenet')}>
-              <div className={styles.downloadClients}>
-                {usenetDownloadClients.map((downloadClient) => {
-                  return (
-                    <AddDownloadClientItem
-                      key={downloadClient.implementation}
-                      {...downloadClient}
-                      implementation={downloadClient.implementation}
-                      onDownloadClientSelect={onDownloadClientSelect}
-                    />
-                  );
-                })}
-              </div>
-            </FieldSet>
+            <div>
+              {usenetDownloadClients.map((downloadClient) => (
+                <AddDownloadClientItem
+                  key={downloadClient.implementation}
+                  {...downloadClient}
+                  implementation={downloadClient.implementation}
+                  onDownloadClientSelect={onDownloadClientSelect}
+                />
+              ))}
+            </div>
 
-            <FieldSet legend={translate('Torrents')}>
-              <div className={styles.downloadClients}>
-                {torrentDownloadClients.map((downloadClient) => {
-                  return (
-                    <AddDownloadClientItem
-                      key={downloadClient.implementation}
-                      {...downloadClient}
-                      implementation={downloadClient.implementation}
-                      onDownloadClientSelect={onDownloadClientSelect}
-                    />
-                  );
-                })}
-              </div>
-            </FieldSet>
+            <div className={styles.groupLegend}>{translate('Torrents')}</div>
 
-            <FieldSet legend={translate('DirectConnect')}>
-              <div className={styles.downloadClients}>
-                {directConnectDownloadClients.map((downloadClient) => {
-                  return (
-                    <AddDownloadClientItem
-                      key={downloadClient.implementation}
-                      {...downloadClient}
-                      implementation={downloadClient.implementation}
-                      onDownloadClientSelect={onDownloadClientSelect}
-                    />
-                  );
-                })}
-              </div>
-            </FieldSet>
+            <div>
+              {torrentDownloadClients.map((downloadClient) => (
+                <AddDownloadClientItem
+                  key={downloadClient.implementation}
+                  {...downloadClient}
+                  implementation={downloadClient.implementation}
+                  onDownloadClientSelect={onDownloadClientSelect}
+                />
+              ))}
+            </div>
+
+            <div className={styles.groupLegend}>{translate('DirectConnect')}</div>
+
+            <div>
+              {directConnectDownloadClients.map((downloadClient) => (
+                <AddDownloadClientItem
+                  key={downloadClient.implementation}
+                  {...downloadClient}
+                  implementation={downloadClient.implementation}
+                  onDownloadClientSelect={onDownloadClientSelect}
+                />
+              ))}
+            </div>
           </div>
         ) : null}
       </ModalBody>
+
       <ModalFooter>
         <Button onPress={onModalClose}>{translate('Close')}</Button>
       </ModalFooter>
