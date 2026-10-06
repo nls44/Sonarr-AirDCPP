@@ -55,10 +55,13 @@ namespace NzbDrone.Core.Test.NotificationTests.Plex
                   .Setup(v => v.Resolve(episodePath))
                   .Returns(resolvedEpisodePath);
 
-            Subject.UpdateLibrary(new List<EpisodeFile>
-            {
-                new EpisodeFile { Path = episodePath }
-            }, series, settings);
+            Subject.UpdateLibrary(
+                new List<EpisodeFile>
+                {
+                    new EpisodeFile { Path = episodePath }
+                },
+                series,
+                settings);
 
             Mocker.GetMock<IPlexServerProxy>()
                   .Verify(v => v.Update(1, @"/mnt/plex/X264/Full.Series.Folder/Season 01", settings), Times.Once());

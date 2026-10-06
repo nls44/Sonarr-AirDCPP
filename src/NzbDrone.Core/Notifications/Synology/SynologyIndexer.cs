@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.IO;
 using FluentValidation.Results;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
