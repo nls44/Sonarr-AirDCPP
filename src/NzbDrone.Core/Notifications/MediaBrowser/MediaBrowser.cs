@@ -44,7 +44,7 @@ namespace NzbDrone.Core.Notifications.Emby
                 _mediaBrowserService.Notify(Settings, EPISODE_DOWNLOADED_TITLE_BRANDED, message.Message);
             }
 
-            UpdateIfEnabled(message.Series, Created);
+            UpdateIfEnabled(message.Series, Created, message.EpisodeFile == null ? null : new List<EpisodeFile> { message.EpisodeFile });
         }
 
         public override void OnImportComplete(ImportCompleteMessage message)
@@ -54,12 +54,12 @@ namespace NzbDrone.Core.Notifications.Emby
                 _mediaBrowserService.Notify(Settings, IMPORT_COMPLETE_TITLE_BRANDED, message.Message);
             }
 
-            UpdateIfEnabled(message.Series, Created);
+            UpdateIfEnabled(message.Series, Created, message.EpisodeFiles);
         }
 
         public override void OnRename(Series series, List<RenamedEpisodeFile> renamedFiles)
         {
-            UpdateIfEnabled(series, Modified);
+            UpdateIfEnabled(series, Modified, renamedFiles?.Select(x => x.EpisodeFile).ToList());
         }
 
         public override void OnEpisodeFileDelete(EpisodeDeleteMessage deleteMessage)
@@ -69,7 +69,7 @@ namespace NzbDrone.Core.Notifications.Emby
                 _mediaBrowserService.Notify(Settings, EPISODE_DELETED_TITLE_BRANDED, deleteMessage.Message);
             }
 
-            UpdateIfEnabled(deleteMessage.Series, Deleted);
+            UpdateIfEnabled(deleteMessage.Series, Deleted, deleteMessage.EpisodeFile == null ? null : new List<EpisodeFile> { deleteMessage.EpisodeFile });
         }
 
         public override void OnSeriesAdd(SeriesAddMessage message)
@@ -135,12 +135,20 @@ namespace NzbDrone.Core.Notifications.Emby
             });
         }
 
-        private void UpdateIfEnabled(Series series, string updateType)
+        private void UpdateIfEnabled(Series series, string updateType, IEnumerable<EpisodeFile> episodeFiles = null)
         {
             if (Settings.UpdateLibrary)
             {
-                _logger.Debug("Scheduling library update for series {0} {1}", series.Id, series.Title);
-                _updateQueue.Add(Settings.Host, series, updateType);
+                if (episodeFiles?.Any() == true)
+                {
+                    _logger.Debug("Starting library update for {0}, episodes: {1}", series.Title, string.Join(',', episodeFiles.Select(ep => ep.Path)));
+                    _mediaBrowserService.Update(Settings, series, updateType, episodeFiles);
+                }
+                else
+                {
+                    _logger.Debug("Scheduling library update for series {0} {1}", series.Id, series.Title);
+                    _updateQueue.Add(Settings.Host, series, updateType);
+                }
             }
         }
 

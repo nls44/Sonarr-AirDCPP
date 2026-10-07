@@ -101,7 +101,7 @@ namespace NzbDrone.Core.Notifications.CustomScript
             var environmentVariables = new StringDictionary();
 
             AddInstanceVariables(environmentVariables, "Download");
-            AddSeriesVariables(environmentVariables, series);
+            AddSeriesVariables(environmentVariables, series, episodeFile);
 
             environmentVariables.Add("Sonarr_IsUpgrade", message.OldFiles.Any().ToString());
             environmentVariables.Add("Sonarr_EpisodeFile_Id", episodeFile.Id.ToString());
@@ -161,7 +161,7 @@ namespace NzbDrone.Core.Notifications.CustomScript
             var environmentVariables = new StringDictionary();
 
             AddInstanceVariables(environmentVariables, "Download");
-            AddSeriesVariables(environmentVariables, series);
+            AddSeriesVariables(environmentVariables, series, episodeFiles.FirstOrDefault());
 
             environmentVariables.Add("Sonarr_EpisodeFile_Ids", string.Join("|", episodeFiles.Select(f => f.Id)));
             environmentVariables.Add("Sonarr_EpisodeFile_Count", message.EpisodeFiles.Count.ToString());
@@ -205,7 +205,7 @@ namespace NzbDrone.Core.Notifications.CustomScript
             var environmentVariables = new StringDictionary();
 
             AddInstanceVariables(environmentVariables, "Rename");
-            AddSeriesVariables(environmentVariables, series);
+            AddSeriesVariables(environmentVariables, series, renamedFiles.FirstOrDefault()?.EpisodeFile);
 
             environmentVariables.Add("Sonarr_EpisodeFile_Ids", string.Join(",", renamedFiles.Select(e => e.EpisodeFile.Id)));
             environmentVariables.Add("Sonarr_EpisodeFile_RelativePaths", string.Join("|", renamedFiles.Select(e => e.EpisodeFile.RelativePath)));
@@ -224,7 +224,7 @@ namespace NzbDrone.Core.Notifications.CustomScript
             var environmentVariables = new StringDictionary();
 
             AddInstanceVariables(environmentVariables, "EpisodeFileDelete");
-            AddSeriesVariables(environmentVariables, series);
+            AddSeriesVariables(environmentVariables, series, episodeFile);
 
             environmentVariables.Add("Sonarr_EpisodeFile_Id", episodeFile.Id.ToString());
             environmentVariables.Add("Sonarr_EpisodeFile_EpisodeCount", episodeFile.Episodes.Value.Count.ToString());
@@ -399,7 +399,7 @@ namespace NzbDrone.Core.Notifications.CustomScript
             environmentVariables.Add("Sonarr_ApplicationUrl", _configService.ApplicationUrl);
         }
 
-        private void AddSeriesVariables(StringDictionary environmentVariables, Series series)
+        private void AddSeriesVariables(StringDictionary environmentVariables, Series series, EpisodeFile episodeFile = null)
         {
             if (series == null)
             {
@@ -409,7 +409,7 @@ namespace NzbDrone.Core.Notifications.CustomScript
             environmentVariables.Add("Sonarr_Series_Id", series.Id.ToString());
             environmentVariables.Add("Sonarr_Series_Title", series.Title);
             environmentVariables.Add("Sonarr_Series_TitleSlug", series.TitleSlug);
-            environmentVariables.Add("Sonarr_Series_Path", _pathResolver.Resolve(series.Path));
+            environmentVariables.Add("Sonarr_Series_Path", _pathResolver.ResolveEpisodeFolderPath(series.Path, episodeFile?.RelativePath));
             environmentVariables.Add("Sonarr_Series_TvdbId", series.TvdbId.ToString());
             environmentVariables.Add("Sonarr_Series_TvMazeId", series.TvMazeId.ToString());
             environmentVariables.Add("Sonarr_Series_TmdbId", series.TmdbId.ToString());

@@ -286,7 +286,7 @@ namespace NzbDrone.Core.History
                     EventType = EpisodeHistoryEventType.EpisodeFileDeleted,
                     Date = DateTime.UtcNow,
                     Quality = message.EpisodeFile.Quality,
-                    SourceTitle = _pathResolver.Resolve(message.EpisodeFile.Path),
+                    SourceTitle = _pathResolver.ResolveEpisodeFilePath(message.EpisodeFile.Series.Value.Path, message.EpisodeFile.RelativePath),
                     SeriesId = message.EpisodeFile.SeriesId,
                     EpisodeId = episode.Id,
                     Languages = message.EpisodeFile.Languages

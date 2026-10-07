@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using FluentValidation.Results;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
@@ -47,7 +48,7 @@ namespace NzbDrone.Core.Notifications.Synology
         {
             if (Settings.UpdateLibrary)
             {
-                _indexerProxy.UpdateFolder(_pathResolver.Resolve(message.Series.Path));
+                UpdateFolders(message.Series, message.EpisodeFiles);
             }
         }
 
@@ -55,7 +56,7 @@ namespace NzbDrone.Core.Notifications.Synology
         {
             if (Settings.UpdateLibrary)
             {
-                _indexerProxy.UpdateFolder(_pathResolver.Resolve(series.Path));
+                UpdateFolders(series, renamedFiles.Select(x => x.EpisodeFile));
             }
         }
 
@@ -84,6 +85,24 @@ namespace NzbDrone.Core.Notifications.Synology
                 {
                     _indexerProxy.DeleteFolder(_pathResolver.Resolve(deleteMessage.Series.Path));
                 }
+            }
+        }
+
+        private void UpdateFolders(Series series, IEnumerable<EpisodeFile> episodeFiles)
+        {
+            var folders = episodeFiles?.Where(e => e?.RelativePath.IsNotNullOrWhiteSpace() == true)
+                                    .Select(e => _pathResolver.ResolveEpisodeFolderPath(series.Path, e.RelativePath))
+                                    .Distinct()
+                                    .ToList();
+
+            if (folders.Empty())
+            {
+                folders = new List<string> { _pathResolver.Resolve(series.Path) };
+            }
+
+            foreach (var folder in folders)
+            {
+                _indexerProxy.UpdateFolder(folder);
             }
         }
 

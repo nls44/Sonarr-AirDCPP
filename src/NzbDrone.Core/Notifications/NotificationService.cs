@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.HealthCheck;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Qualities;
@@ -36,12 +36,14 @@ namespace NzbDrone.Core.Notifications
     {
         private readonly INotificationFactory _notificationFactory;
         private readonly INotificationStatusService _notificationStatusService;
+        private readonly IMediaPathResolver _pathResolver;
         private readonly Logger _logger;
 
-        public NotificationService(INotificationFactory notificationFactory, INotificationStatusService notificationStatusService, Logger logger)
+        public NotificationService(INotificationFactory notificationFactory, INotificationStatusService notificationStatusService, IMediaPathResolver pathResolver, Logger logger)
         {
             _notificationFactory = notificationFactory;
             _notificationStatusService = notificationStatusService;
+            _pathResolver = pathResolver;
             _logger = logger;
         }
 
@@ -225,7 +227,7 @@ namespace NzbDrone.Core.Notifications
                 DownloadId = message.TrackedDownload.DownloadItem.DownloadId,
                 Release = message.Release,
                 SourcePath = message.TrackedDownload.DownloadItem.OutputPath.FullPath,
-                DestinationPath = message.EpisodeFiles.Select(e => Path.Join(series.Path, e.RelativePath)).ToList().GetLongestCommonPath(),
+                DestinationPath = message.EpisodeFiles.Select(e => _pathResolver.ResolveEpisodeFilePath(series.Path, e.RelativePath)).ToList().GetLongestCommonPath(),
                 ReleaseGroup = parsedEpisodeInfo.ReleaseGroup,
                 ReleaseQuality = parsedEpisodeInfo.Quality
             };
@@ -267,7 +269,7 @@ namespace NzbDrone.Core.Notifications
                 EpisodeFiles = message.EpisodeFiles,
                 SourcePath = message.SourcePath,
                 SourceTitle = parsedEpisodeInfo.ReleaseTitle,
-                DestinationPath = message.EpisodeFiles.Select(e => Path.Join(series.Path, e.RelativePath)).ToList().GetLongestCommonPath(),
+                DestinationPath = message.EpisodeFiles.Select(e => _pathResolver.ResolveEpisodeFilePath(series.Path, e.RelativePath)).ToList().GetLongestCommonPath(),
                 ReleaseGroup = parsedEpisodeInfo.ReleaseGroup,
                 ReleaseQuality = parsedEpisodeInfo.Quality
             };

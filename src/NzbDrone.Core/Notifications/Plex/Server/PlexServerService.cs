@@ -89,58 +89,45 @@ namespace NzbDrone.Core.Notifications.Plex.Server
         {
             var sections = GetSections(settings);
 
-            if (_configService.CopyUsingSymlinks)
+            var unmatchedEpisode = false;
+
+            foreach (var episode in episodes)
             {
-                foreach (var episode in episodes)
+                var episodePath = episode.RelativePath.IsNotNullOrWhiteSpace()
+                    ? _pathResolver.ResolveEpisodeFilePath(series.Path, episode.RelativePath)
+                    : _pathResolver.Resolve(episode.Path);
+                var episodeLocation = episodePath.GetParentPath().TrimEnd(Path.DirectorySeparatorChar);
+                var mappedEpisodeLocation = _pathResolver.ResolveMappedPath(episodeLocation, settings.MapFrom, settings.MapTo);
+
+                _logger.Debug("Searching matching section for {0}", mappedEpisodeLocation);
+                var matchingSections = sections.Where(section => section.Locations.Any(location =>
+                        location.Path.PathEquals(mappedEpisodeLocation) || location.Path.IsParentPath(mappedEpisodeLocation)))
+                    .ToList();
+
+                if (matchingSections.Empty())
                 {
-                    var episodeLocation = _pathResolver.Resolve(episode.Path).GetParentPath().TrimEnd(Path.DirectorySeparatorChar);
+                    unmatchedEpisode = true;
+                    continue;
+                }
 
-                    _logger.Debug("Searching matching section for {0}", episodeLocation);
-                    var matchingSections = sections.Where(section => section.Locations.Any(location =>
-                            IsSubDirectory(episodeLocation, location.Path)))
-                        .ToList();
+                foreach (var matchingSection in matchingSections)
+                {
+                    _plexServerProxy.Update(matchingSection.Id, mappedEpisodeLocation, settings);
+                }
+            }
 
-                    if (matchingSections.Any())
+            if (unmatchedEpisode)
+            {
+                _logger.Debug("Unable to find a matching section for a resolved episode path, updating all TV sections at their root locations");
+
+                foreach (var section in sections)
+                {
+                    foreach (var location in section.Locations)
                     {
-                        foreach (var matchingSection in matchingSections)
-                        {
-                            _plexServerProxy.Update(matchingSection.Id, episodeLocation, settings);
-                        }
-                    }
-                    else
-                    {
-                        _logger.Warn("Failed to find matching section for {0}", episodeLocation);
+                        UpdateSectionPath(string.Empty, section, location, settings);
                     }
                 }
             }
-            else
-            {
-                UpdateLibrary([series], settings);
-            }
-        }
-
-        // Checks if the given directory is a subdirectory of the parent directory
-        private bool IsSubDirectory(string directory, string parentDirectory)
-        {
-            var isSubDirectory = false;
-
-            var parentDir = new DirectoryInfo(parentDirectory.TrimEnd(Path.DirectorySeparatorChar));
-            var subDir = new DirectoryInfo(directory.TrimEnd(Path.DirectorySeparatorChar));
-
-            while (subDir.Parent != null)
-            {
-                if (subDir.Parent.FullName == parentDir.FullName)
-                {
-                    isSubDirectory = true;
-                    break;
-                }
-                else
-                {
-                    subDir = subDir.Parent;
-                }
-            }
-
-            return isSubDirectory;
         }
 
         private List<PlexSection> GetSections(PlexServerSettings settings)
@@ -207,13 +194,13 @@ namespace NzbDrone.Core.Notifications.Plex.Server
                 return;
             }
 
-            _logger.Debug("Unable to find matching section location, updating all TV sections");
+            _logger.Debug("Unable to find matching section location, updating all TV sections at their root locations");
 
             foreach (var section in sections)
             {
                 foreach (var location in section.Locations)
                 {
-                    UpdateSectionPath(seriesRelativePath, section, location, settings);
+                    UpdateSectionPath(string.Empty, section, location, settings);
                 }
             }
         }

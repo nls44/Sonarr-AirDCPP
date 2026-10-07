@@ -22,9 +22,8 @@ namespace NzbDrone.Core.Test.NotificationTests.Webhook
         public void should_send_resolved_series_and_episode_paths()
         {
             var seriesPath = @"/mnt/ext_3/sonarr/Nicely Formatted Series";
-            var episodeFilePath = Path.Combine(seriesPath, "Season 01", "Episode.mkv");
-            var resolvedSeriesPath = @"/mnt/plex/X264/Full.Series.Folder";
             var resolvedEpisodeFilePath = @"/mnt/plex/X264/Full.Series.Folder/Season 01/Episode.mkv";
+            var resolvedEpisodeFolderPath = Path.GetDirectoryName(resolvedEpisodeFilePath);
             var series = new Series
             {
                 Id = 1,
@@ -49,10 +48,10 @@ namespace NzbDrone.Core.Test.NotificationTests.Webhook
                   .Setup(v => v.GetTags(It.IsAny<HashSet<int>>()))
                   .Returns(new List<Tag>());
             Mocker.GetMock<IMediaPathResolver>()
-                  .Setup(v => v.Resolve(seriesPath))
-                  .Returns(resolvedSeriesPath);
+                  .Setup(v => v.ResolveEpisodeFolderPath(seriesPath, episodeFile.RelativePath))
+                  .Returns(resolvedEpisodeFolderPath);
             Mocker.GetMock<IMediaPathResolver>()
-                  .Setup(v => v.Resolve(episodeFilePath))
+                  .Setup(v => v.ResolveEpisodeFilePath(seriesPath, episodeFile.RelativePath))
                   .Returns(resolvedEpisodeFilePath);
             Mocker.GetMock<IWebhookProxy>()
                   .Setup(v => v.SendWebhook(It.IsAny<WebhookPayload>(), It.IsAny<WebhookSettings>()))
@@ -70,7 +69,7 @@ namespace NzbDrone.Core.Test.NotificationTests.Webhook
             });
 
             payload.Should().NotBeNull();
-            payload.Series.Path.Should().Be(resolvedSeriesPath);
+            payload.Series.Path.Should().Be(resolvedEpisodeFolderPath);
             payload.EpisodeFile.Path.Should().Be(resolvedEpisodeFilePath);
         }
 
@@ -78,9 +77,8 @@ namespace NzbDrone.Core.Test.NotificationTests.Webhook
         public void should_send_resolved_import_complete_paths()
         {
             var seriesPath = @"/mnt/ext_3/sonarr/Nicely Formatted Series";
-            var episodeFilePath = Path.Combine(seriesPath, "Season 01", "Episode.mkv");
-            var resolvedSeriesPath = @"/mnt/plex/X264/Full.Series.Folder";
             var resolvedEpisodeFilePath = @"/mnt/plex/X264/Full.Series.Folder/Season 01/Episode.mkv";
+            var resolvedEpisodeFolderPath = Path.GetDirectoryName(resolvedEpisodeFilePath);
             var series = new Series
             {
                 Id = 1,
@@ -105,10 +103,10 @@ namespace NzbDrone.Core.Test.NotificationTests.Webhook
                   .Setup(v => v.GetTags(It.IsAny<HashSet<int>>()))
                   .Returns(new List<Tag>());
             Mocker.GetMock<IMediaPathResolver>()
-                  .Setup(v => v.Resolve(seriesPath))
-                  .Returns(resolvedSeriesPath);
+                  .Setup(v => v.ResolveEpisodeFolderPath(seriesPath, episodeFile.RelativePath))
+                  .Returns(resolvedEpisodeFolderPath);
             Mocker.GetMock<IMediaPathResolver>()
-                  .Setup(v => v.Resolve(episodeFilePath))
+                  .Setup(v => v.ResolveEpisodeFilePath(seriesPath, episodeFile.RelativePath))
                   .Returns(resolvedEpisodeFilePath);
             Mocker.GetMock<IWebhookProxy>()
                   .Setup(v => v.SendWebhook(It.IsAny<WebhookPayload>(), It.IsAny<WebhookSettings>()))
@@ -119,13 +117,13 @@ namespace NzbDrone.Core.Test.NotificationTests.Webhook
                 Series = series,
                 Episodes = new List<Episode>(),
                 EpisodeFiles = new List<EpisodeFile> { episodeFile },
-                DestinationPath = seriesPath
+                DestinationPath = resolvedEpisodeFolderPath
             });
 
             payload.Should().NotBeNull();
-            payload.Series.Path.Should().Be(resolvedSeriesPath);
+            payload.Series.Path.Should().Be(resolvedEpisodeFolderPath);
             payload.EpisodeFiles[0].Path.Should().Be(resolvedEpisodeFilePath);
-            payload.DestinationPath.Should().Be(resolvedSeriesPath);
+            payload.DestinationPath.Should().Be(resolvedEpisodeFolderPath);
         }
     }
 }

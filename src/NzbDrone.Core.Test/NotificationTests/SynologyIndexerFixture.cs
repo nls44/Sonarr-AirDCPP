@@ -24,8 +24,11 @@ namespace NzbDrone.Core.Test.NotificationTests
                 .Setup(v => v.Resolve(It.IsAny<string>()))
                 .Returns((string path) => path);
             Mocker.GetMock<IMediaPathResolver>()
-                .Setup(v => v.ResolveEpisodeFilePath(It.IsAny<string>(), It.IsAny<string>()))
-                .Returns((string seriesPath, string relativePath) => Path.Combine(seriesPath, relativePath));
+                  .Setup(v => v.ResolveEpisodeFilePath(It.IsAny<string>(), It.IsAny<string>()))
+                  .Returns((string seriesPath, string relativePath) => Path.Combine(seriesPath, relativePath));
+            Mocker.GetMock<IMediaPathResolver>()
+                  .Setup(v => v.ResolveEpisodeFolderPath(It.IsAny<string>(), It.IsAny<string>()))
+                  .Returns((string seriesPath, string relativePath) => Path.GetDirectoryName(Path.Combine(seriesPath, relativePath)));
 
             _series = new Series()
             {

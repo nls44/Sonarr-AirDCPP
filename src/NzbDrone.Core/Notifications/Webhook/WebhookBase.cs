@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Configuration;
@@ -54,7 +53,7 @@ namespace NzbDrone.Core.Notifications.Webhook
         protected WebhookImportPayload BuildOnDownloadPayload(DownloadMessage message)
         {
             var episodeFile = message.EpisodeFile;
-            var webhookEpisodeFile = ResolveEpisodeFile(new WebhookEpisodeFile(episodeFile));
+            var webhookEpisodeFile = ResolveEpisodeFile(new WebhookEpisodeFile(episodeFile), message.Series.Path);
             webhookEpisodeFile.SourcePath = message.SourcePath;
 
             var payload = new WebhookImportPayload
@@ -62,7 +61,7 @@ namespace NzbDrone.Core.Notifications.Webhook
                 EventType = WebhookEventType.Download,
                 InstanceName = _configFileProvider.InstanceName,
                 ApplicationUrl = _configService.ApplicationUrl,
-                Series = GetSeries(message.Series),
+                Series = GetSeries(message.Series, episodeFile),
                 Episodes = episodeFile.Episodes.Value.ConvertAll(x => new WebhookEpisode(x)),
                 EpisodeFile = webhookEpisodeFile,
                 Release = new WebhookGrabbedRelease(message.Release, episodeFile.IndexerFlags, episodeFile.ReleaseType),
@@ -75,11 +74,13 @@ namespace NzbDrone.Core.Notifications.Webhook
 
             if (message.OldFiles.Any())
             {
-                payload.DeletedFiles = message.OldFiles.ConvertAll(x => ResolveEpisodeFile(new WebhookEpisodeFile(x.EpisodeFile)
-                {
-                    Path = Path.Combine(message.Series.Path, x.EpisodeFile.RelativePath),
-                    RecycleBinPath = x.RecycleBinPath
-                }));
+                payload.DeletedFiles = message.OldFiles.ConvertAll(x =>
+                    ResolveEpisodeFile(
+                        new WebhookEpisodeFile(x.EpisodeFile)
+                        {
+                            RecycleBinPath = x.RecycleBinPath
+                        },
+                        message.Series.Path));
             }
 
             return payload;
@@ -94,15 +95,15 @@ namespace NzbDrone.Core.Notifications.Webhook
                 EventType = WebhookEventType.Download,
                 InstanceName = _configFileProvider.InstanceName,
                 ApplicationUrl = _configService.ApplicationUrl,
-                Series = GetSeries(message.Series),
+                Series = GetSeries(message.Series, episodeFiles.FirstOrDefault()),
                 Episodes = message.Episodes.ConvertAll(x => new WebhookEpisode(x)),
-                EpisodeFiles = episodeFiles.ConvertAll(e => ResolveEpisodeFile(new WebhookEpisodeFile(e))),
+                EpisodeFiles = episodeFiles.ConvertAll(e => ResolveEpisodeFile(new WebhookEpisodeFile(e), message.Series.Path)),
                 Release = new WebhookGrabbedRelease(message.Release, episodeFiles.First().IndexerFlags, episodeFiles.First().ReleaseType),
                 DownloadClient = message.DownloadClientInfo?.Name,
                 DownloadClientType = message.DownloadClientInfo?.Type,
                 DownloadId = message.DownloadId,
                 SourcePath = message.SourcePath,
-                DestinationPath = _pathResolver.Resolve(message.DestinationPath)
+                DestinationPath = message.DestinationPath
             };
 
             return payload;
@@ -115,9 +116,9 @@ namespace NzbDrone.Core.Notifications.Webhook
                 EventType = WebhookEventType.EpisodeFileDelete,
                 InstanceName = _configFileProvider.InstanceName,
                 ApplicationUrl = _configService.ApplicationUrl,
-                Series = GetSeries(deleteMessage.Series),
+                Series = GetSeries(deleteMessage.Series, deleteMessage.EpisodeFile),
                 Episodes = deleteMessage.EpisodeFile.Episodes.Value.ConvertAll(x => new WebhookEpisode(x)),
-                EpisodeFile = ResolveEpisodeFile(new WebhookEpisodeFile(deleteMessage.EpisodeFile)),
+                EpisodeFile = ResolveEpisodeFile(new WebhookEpisodeFile(deleteMessage.EpisodeFile), deleteMessage.Series.Path),
                 DeleteReason = deleteMessage.Reason
             };
         }
@@ -152,8 +153,8 @@ namespace NzbDrone.Core.Notifications.Webhook
                 EventType = WebhookEventType.Rename,
                 InstanceName = _configFileProvider.InstanceName,
                 ApplicationUrl = _configService.ApplicationUrl,
-                Series = GetSeries(series),
-                RenamedEpisodeFiles = renamedFiles.ConvertAll(x => ResolveEpisodeFile(new WebhookRenamedEpisodeFile(x)))
+                Series = GetSeries(series, renamedFiles.FirstOrDefault()?.EpisodeFile),
+                RenamedEpisodeFiles = renamedFiles.ConvertAll(x => ResolveEpisodeFile(new WebhookRenamedEpisodeFile(x), series.Path))
             };
         }
 
@@ -246,7 +247,7 @@ namespace NzbDrone.Core.Notifications.Webhook
             };
         }
 
-        private WebhookSeries GetSeries(Series series)
+        private WebhookSeries GetSeries(Series series, EpisodeFile episodeFile = null)
         {
             if (series == null)
             {
@@ -256,15 +257,15 @@ namespace NzbDrone.Core.Notifications.Webhook
             _mediaCoverService.ConvertToLocalUrls(series.Id, series.Images, series.Added);
 
             var webhookSeries = new WebhookSeries(series, GetTagLabels(series));
-            webhookSeries.Path = _pathResolver.Resolve(webhookSeries.Path);
+            webhookSeries.Path = _pathResolver.ResolveEpisodeFolderPath(series.Path, episodeFile?.RelativePath);
 
             return webhookSeries;
         }
 
-        private T ResolveEpisodeFile<T>(T episodeFile)
+        private T ResolveEpisodeFile<T>(T episodeFile, string seriesPath)
             where T : WebhookEpisodeFile
         {
-            episodeFile.Path = _pathResolver.Resolve(episodeFile.Path);
+            episodeFile.Path = _pathResolver.ResolveEpisodeFilePath(seriesPath, episodeFile.RelativePath);
 
             if (episodeFile is WebhookRenamedEpisodeFile renamedEpisodeFile)
             {

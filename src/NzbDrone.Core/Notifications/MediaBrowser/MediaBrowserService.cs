@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using FluentValidation.Results;
 using NLog;
@@ -13,7 +14,7 @@ namespace NzbDrone.Core.Notifications.Emby
     public interface IMediaBrowserService
     {
         void Notify(MediaBrowserSettings settings, string title, string message);
-        void Update(MediaBrowserSettings settings, Series series, string updateType);
+        void Update(MediaBrowserSettings settings, Series series, string updateType, IEnumerable<EpisodeFile> episodeFiles = null);
         ValidationFailure Test(MediaBrowserSettings settings);
     }
 
@@ -37,13 +38,24 @@ namespace NzbDrone.Core.Notifications.Emby
             _proxy.Notify(settings, title, message);
         }
 
-        public void Update(MediaBrowserSettings settings, Series series, string updateType)
+        public void Update(MediaBrowserSettings settings, Series series, string updateType, IEnumerable<EpisodeFile> episodeFiles = null)
         {
             HashSet<string> paths;
 
             paths = _proxy.GetPaths(settings, series);
 
-            paths.Add(_pathResolver.ResolveMappedPath(series.Path, settings.MapFrom, settings.MapTo));
+            if (episodeFiles?.Any() == true)
+            {
+                foreach (var episodeFile in episodeFiles)
+                {
+                    var episodeFolder = _pathResolver.ResolveEpisodeFolderPath(series.Path, episodeFile.RelativePath);
+                    paths.Add(_pathResolver.ResolveMappedPath(episodeFolder, settings.MapFrom, settings.MapTo));
+                }
+            }
+            else
+            {
+                paths.Add(_pathResolver.ResolveMappedPath(series.Path, settings.MapFrom, settings.MapTo));
+            }
 
             foreach (var path in paths)
             {

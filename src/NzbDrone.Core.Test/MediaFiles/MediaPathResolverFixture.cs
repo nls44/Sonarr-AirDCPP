@@ -1,6 +1,7 @@
 using FluentAssertions;
 using NUnit.Framework;
 using NzbDrone.Common.Disk;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Test.Framework;
 
 namespace NzbDrone.Core.Test.MediaFiles
@@ -34,6 +35,22 @@ namespace NzbDrone.Core.Test.MediaFiles
                   .Returns(resolvedPath);
 
             Subject.ResolveEpisodeFilePath(seriesPath, relativePath).Should().Be(resolvedPath);
+        }
+
+        [Test]
+        public void should_resolve_episode_folder_from_the_resolved_episode_file()
+        {
+            var seriesPath = @"/mnt/ext_3/sonarr/Test Series";
+            var relativePath = @"Season 01/Episode.mkv";
+            var fullPath = System.IO.Path.Combine(seriesPath, relativePath);
+            var resolvedPath = @"/mnt/plex/TV/Real.Series/Season 01/Episode.mkv";
+
+            Mocker.GetMock<IDiskProvider>()
+                  .Setup(v => v.GetRealPath(fullPath))
+                  .Returns(resolvedPath);
+
+            Subject.ResolveEpisodeFolderPath(seriesPath, relativePath)
+                   .Should().Be(resolvedPath.GetParentPath());
         }
 
         [Test]

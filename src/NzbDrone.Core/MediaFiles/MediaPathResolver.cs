@@ -8,6 +8,7 @@ namespace NzbDrone.Core.MediaFiles
     {
         string Resolve(string path);
         string ResolveEpisodeFilePath(string seriesPath, string relativePath);
+        string ResolveEpisodeFolderPath(string seriesPath, string relativePath);
         string ResolveMappedPath(string path, string mapFrom, string mapTo);
     }
 
@@ -38,6 +39,16 @@ namespace NzbDrone.Core.MediaFiles
             }
 
             return Resolve(Path.Combine(seriesPath, relativePath));
+        }
+
+        public string ResolveEpisodeFolderPath(string seriesPath, string relativePath)
+        {
+            if (relativePath.IsNullOrWhiteSpace())
+            {
+                return Resolve(seriesPath);
+            }
+
+            return ResolveEpisodeFilePath(seriesPath, relativePath).GetParentPath();
         }
 
         public string ResolveMappedPath(string path, string mapFrom, string mapTo)

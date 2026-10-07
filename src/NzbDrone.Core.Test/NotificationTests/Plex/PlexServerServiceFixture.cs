@@ -43,6 +43,10 @@ namespace NzbDrone.Core.Test.NotificationTests.Plex
             Mocker.GetMock<IPlexServerProxy>()
                 .Setup(s => s.Version(_settings))
                 .Returns("1.20.0.12345-abcdef");
+
+            Mocker.GetMock<IMediaPathResolver>()
+                .Setup(v => v.ResolveMappedPath(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+                .Returns((string path, string _, string __) => path);
         }
 
         [Test]
@@ -52,7 +56,7 @@ namespace NzbDrone.Core.Test.NotificationTests.Plex
             {
                 Host = "plex"
             };
-            var episodePath = @"/mnt/ext_3/sonarr/Nicely Formatted Series/Season 01/Episode.mkv";
+            var episodeRelativePath = @"Season 01/Episode.mkv";
             var resolvedEpisodePath = @"/mnt/plex/X264/Full.Series.Folder/Season 01/Episode.mkv";
             var series = new Series
             {
@@ -78,19 +82,61 @@ namespace NzbDrone.Core.Test.NotificationTests.Plex
                 .Setup(v => v.GetTvSections(settings))
                 .Returns(sections);
             Mocker.GetMock<IMediaPathResolver>()
-                .Setup(v => v.Resolve(episodePath))
+                .Setup(v => v.ResolveEpisodeFilePath(series.Path, episodeRelativePath))
                 .Returns(resolvedEpisodePath);
 
             Subject.UpdateLibrary(
                 new List<EpisodeFile>
                 {
-                    new EpisodeFile { Path = episodePath }
+                    new EpisodeFile { RelativePath = episodeRelativePath }
                 },
                 series,
                 settings);
 
             Mocker.GetMock<IPlexServerProxy>()
                 .Verify(v => v.Update(1, @"/mnt/plex/X264/Full.Series.Folder/Season 01", settings), Times.Once());
+        }
+
+        [Test]
+        public void should_refresh_section_roots_when_a_resolved_episode_path_does_not_match()
+        {
+            var episodeRelativePath = @"Season 01/Episode.mkv";
+            var series = new Series
+            {
+                Path = @"/mnt/ext_3/sonarr/Test Series"
+            };
+            var sections = new List<PlexSection>
+            {
+                new PlexSection
+                {
+                    Id = 1,
+                    Type = "show",
+                    Locations = new List<PlexSectionLocation>
+                    {
+                        new PlexSectionLocation { Path = @"/mnt/plex/TV" }
+                    }
+                }
+            };
+
+            Mocker.GetMock<IPlexServerProxy>()
+                .Setup(v => v.GetTvSections(_settings))
+                .Returns(sections);
+            Mocker.GetMock<IMediaPathResolver>()
+                .Setup(v => v.ResolveEpisodeFilePath(series.Path, episodeRelativePath))
+                .Returns(@"/mnt/other/Unmatched.Series/Season 01/Episode.mkv");
+
+            Subject.UpdateLibrary(
+                new List<EpisodeFile>
+                {
+                    new EpisodeFile { RelativePath = episodeRelativePath }
+                },
+                series,
+                _settings);
+
+            Mocker.GetMock<IPlexServerProxy>()
+                .Verify(v => v.Update(1, @"/mnt/plex/TV/", _settings), Times.Once());
+            Mocker.GetMock<IPlexServerProxy>()
+                .Verify(v => v.Update(1, It.Is<string>(path => path.Contains("Test Series")), _settings), Times.Never());
         }
 
         private PlexSection GivenSection(int id)

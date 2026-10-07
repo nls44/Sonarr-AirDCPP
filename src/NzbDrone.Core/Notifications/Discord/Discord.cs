@@ -359,7 +359,7 @@ namespace NzbDrone.Core.Notifications.Discord
         {
             var series = deleteMessage.Series;
             var episodes = deleteMessage.EpisodeFile.Episodes;
-            var deletedFile = _pathResolver.Resolve(deleteMessage.EpisodeFile.Path);
+            var deletedFile = _pathResolver.ResolveEpisodeFilePath(deleteMessage.Series.Path, deleteMessage.EpisodeFile.RelativePath);
             var reason = deleteMessage.Reason;
 
             var embed = new Embed

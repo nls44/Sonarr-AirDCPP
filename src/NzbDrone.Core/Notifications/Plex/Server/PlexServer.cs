@@ -34,7 +34,7 @@ namespace NzbDrone.Core.Notifications.Plex.Server
 
         public override void OnDownload(DownloadMessage message)
         {
-            UpdateIfEnabled(message.Series);
+            UpdateIfEnabled(message.Series, message.EpisodeFile == null ? null : new List<EpisodeFile> { message.EpisodeFile });
         }
 
         public override void OnImportComplete(ImportCompleteMessage message)
@@ -44,12 +44,12 @@ namespace NzbDrone.Core.Notifications.Plex.Server
 
         public override void OnRename(Series series, List<RenamedEpisodeFile> renamedFiles)
         {
-            UpdateIfEnabled(series);
+            UpdateIfEnabled(series, renamedFiles?.Select(x => x.EpisodeFile).ToList());
         }
 
         public override void OnEpisodeFileDelete(EpisodeDeleteMessage deleteMessage)
         {
-            UpdateIfEnabled(deleteMessage.Series);
+            UpdateIfEnabled(deleteMessage.Series, deleteMessage.EpisodeFile == null ? null : new List<EpisodeFile> { deleteMessage.EpisodeFile });
         }
 
         public override void OnSeriesAdd(SeriesAddMessage message)
@@ -71,7 +71,7 @@ namespace NzbDrone.Core.Notifications.Plex.Server
 
             if (Settings.UpdateLibrary)
             {
-                if (episodes != null)
+                if (episodes?.Any() == true)
                 {
                     _logger.Debug("Starting library update for {0}, episodes: {1}", series.Title, string.Join(',', episodes.Select(ep => ep.Path)));
                     _plexServerService.UpdateLibrary(episodes, series, Settings);

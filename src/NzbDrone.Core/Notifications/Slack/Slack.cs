@@ -100,7 +100,7 @@ namespace NzbDrone.Core.Notifications.Slack
                 new()
                 {
                     Title = GetTitle(deleteMessage.Series, deleteMessage.EpisodeFile.Episodes),
-                    Text = _pathResolver.Resolve(deleteMessage.EpisodeFile.Path)
+                    Text = _pathResolver.ResolveEpisodeFilePath(deleteMessage.Series.Path, deleteMessage.EpisodeFile.RelativePath)
                 }
             };
 
