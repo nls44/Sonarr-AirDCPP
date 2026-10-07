@@ -6,17 +6,32 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 10px;
 
   padding: 10px 0;
+  width: 100%;
   background-color: var(--modalBackgroundColor);
 }
 
 .filterInput {
-  flex: 0 0 auto;
+  flex: 1 1 200px;
+  min-width: 0;
   width: 250px;
 }
 
 .filteredMessage {
   margin-top: 10px;
+}
+
+.resultsScroller {
+  overflow-x: auto;
+  width: 100%;
+}
+
+.results {
+  min-width: calc(
+    var(--interactive-search-title-width, 240px) +
+      var(--interactive-search-fixed-columns-width, 910px)
+  );
 }

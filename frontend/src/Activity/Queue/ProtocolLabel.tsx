@@ -8,8 +8,20 @@ interface ProtocolLabelProps
   protocol: DownloadProtocol;
 }
 
+function getProtocolName(protocol: DownloadProtocol) {
+  if (protocol === 'usenet') {
+    return 'nzb';
+  }
+
+  if (protocol === 'directConnect') {
+    return 'DC';
+  }
+
+  return protocol;
+}
+
 function ProtocolLabel({ protocol, ...otherProps }: ProtocolLabelProps) {
-  const protocolName = protocol === 'usenet' ? 'nzb' : protocol;
+  const protocolName = getProtocolName(protocol);
 
   return (
     <Label className={styles[protocol]} {...otherProps}>

@@ -222,7 +222,9 @@ function InteractiveSearchRow(props: InteractiveSearchRowProps) {
 
       <VirtualTableRowCell className={styles.title}>
         <div className={styles.titleContent}>
-          <Link to={infoUrl}>{title}</Link>
+          <Link to={infoUrl} title={title}>
+            {title}
+          </Link>
           <ReleaseSceneIndicator
             className={styles.sceneMapping}
             seasonNumber={mappedSeasonNumber}
@@ -307,7 +309,11 @@ function InteractiveSearchRow(props: InteractiveSearchRowProps) {
       </VirtualTableRowCell>
 
       <VirtualTableRowCell className={styles.quality}>
-        <EpisodeQuality quality={quality} showRevision={true} />
+        <EpisodeQuality
+          className={styles.qualityLabel}
+          quality={quality}
+          showRevision={true}
+        />
       </VirtualTableRowCell>
 
       <VirtualTableRowCell className={styles.customFormatScore}>
@@ -350,20 +356,21 @@ function InteractiveSearchRow(props: InteractiveSearchRowProps) {
       </VirtualTableRowCell>
 
       <VirtualTableRowCell className={styles.download}>
-        <SpinnerIconButton
-          name={getDownloadIcon(isGrabbing, isGrabbed, grabError)}
-          kind={getDownloadKind(isGrabbed, grabError)}
-          title={getDownloadTooltip(isGrabbing, isGrabbed, grabError)}
-          isSpinning={isGrabbing}
-          onPress={handleGrabPress}
-        />
+        <div className={styles.downloadActions}>
+          <SpinnerIconButton
+            className={styles.downloadButton}
+            name={getDownloadIcon(isGrabbing, isGrabbed, grabError)}
+            kind={getDownloadKind(isGrabbed, grabError)}
+            title={getDownloadTooltip(isGrabbing, isGrabbed, grabError)}
+            isSpinning={isGrabbing}
+            onPress={handleGrabPress}
+          />
 
-        <Link
-          className={styles.manualDownloadContent}
-          title={translate('OverrideAndAddToDownloadQueue')}
-          onPress={onOverridePress}
-        >
-          <div className={styles.manualDownloadContent}>
+          <Link
+            className={styles.manualDownloadContent}
+            title={translate('OverrideAndAddToDownloadQueue')}
+            onPress={onOverridePress}
+          >
             <Icon
               className={styles.interactiveIcon}
               name={icons.INTERACTIVE}
@@ -375,8 +382,8 @@ function InteractiveSearchRow(props: InteractiveSearchRowProps) {
               name={icons.CIRCLE_DOWN}
               size={10}
             />
-          </div>
-        </Link>
+          </Link>
+        </div>
       </VirtualTableRowCell>
 
       <ConfirmModal

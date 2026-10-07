@@ -37,7 +37,7 @@ function SeasonInteractiveSearchModalContent({
             })}
       </ModalHeader>
 
-      <ModalBody ref={modalBodyRef} scrollDirection={scrollDirections.BOTH}>
+      <ModalBody ref={modalBodyRef} scrollDirection={scrollDirections.VERTICAL}>
         <InteractiveSearch
           type="season"
           searchPayload={{

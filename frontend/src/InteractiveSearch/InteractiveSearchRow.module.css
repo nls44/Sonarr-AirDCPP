@@ -1,6 +1,24 @@
 .row {
   display: flex;
   align-items: stretch;
+  min-width: 100%;
+}
+
+.protocol,
+.indexer,
+.quality,
+.languages,
+.customFormatScore,
+.rejected,
+.indexerFlags,
+.history,
+.age,
+.size,
+.peers,
+.download {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .protocol {
@@ -13,15 +31,20 @@
 .title {
   composes: cell from 'Components/Table/Cells/TableRowCell.module.css';
 
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 0 0 var(--interactive-search-title-width, 240px);
+  width: var(--interactive-search-title-width, 240px);
 }
 
 .titleContent {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  word-break: break-all;
+  white-space: nowrap;
+}
+
+.titleContent > a {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .sceneMapping {
@@ -46,6 +69,12 @@
 .quality {
   width: 100px;
   white-space: nowrap;
+}
+
+.qualityLabel {
+  overflow: hidden;
+  max-width: calc(100% - 4px);
+  text-overflow: ellipsis;
 }
 
 .languages {
@@ -110,14 +139,29 @@
   width: 80px;
 }
 
+.downloadActions {
+  display: inline-flex;
+  align-items: center;
+}
+
+.downloadButton {
+  composes: button from 'Components/Link/IconButton.module.css';
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+}
+
 .manualDownloadContent {
   position: relative;
   display: inline-block;
+  flex: 0 0 22px;
   margin: 0 2px;
   width: 22px;
-  height: 20.39px;
+  height: 22px;
   vertical-align: middle;
-  line-height: 20.39px;
+  line-height: 1;
 
   &:hover {
     color: var(--iconButtonHoverColor);
@@ -126,7 +170,7 @@
 
 .interactiveIcon {
   position: absolute;
-  top: 4px;
+  top: 2px;
   left: 0;
   /* width: 100%; */
   text-align: center;
@@ -134,7 +178,7 @@
 
 .downloadIcon {
   position: absolute;
-  top: 7px;
+  top: 6px;
   left: 8px;
   /* width: 100%; */
   text-align: center;

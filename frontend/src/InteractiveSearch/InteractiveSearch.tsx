@@ -31,6 +31,10 @@ import useReleases, { FILTERS, Release, setReleaseSort } from './useReleases';
 import styles from './InteractiveSearch.module.css';
 
 const ESTIMATED_ROW_HEIGHT = 35;
+const FIXED_COLUMNS_WIDTH = 910;
+const MIN_TITLE_WIDTH = 240;
+const TITLE_EXTRA_WIDTH = 48;
+const FALLBACK_TITLE_CHARACTER_WIDTH = 8;
 
 interface RowItemData {
   items: Release[];
@@ -160,6 +164,40 @@ function InteractiveSearch({
     [data, searchPayload, setRowHeight]
   );
 
+  const titleWidth = useMemo(() => {
+    const fallbackWidth = data.reduce(
+      (longest, item) =>
+        Math.max(longest, item.release.title.length) *
+        FALLBACK_TITLE_CHARACTER_WIDTH,
+      0
+    );
+
+    if (typeof document === 'undefined') {
+      return Math.max(MIN_TITLE_WIDTH, fallbackWidth + TITLE_EXTRA_WIDTH);
+    }
+
+    const context = document.createElement('canvas').getContext('2d');
+
+    if (context) {
+      const fontFamily = getComputedStyle(document.body).fontFamily;
+
+      context.font = `13px ${fontFamily || 'sans-serif'}`;
+
+      const longestTitleWidth = data.reduce(
+        (longest, item) =>
+          Math.max(longest, context.measureText(item.release.title).width),
+        0
+      );
+
+      return Math.max(
+        MIN_TITLE_WIDTH,
+        Math.ceil(longestTitleWidth) + TITLE_EXTRA_WIDTH
+      );
+    }
+
+    return Math.max(MIN_TITLE_WIDTH, fallbackWidth + TITLE_EXTRA_WIDTH);
+  }, [data]);
+
   const onFilterChange = useCallback(({ value }: InputChanged<string>) => {
     setFilter(value);
   }, []);
@@ -236,28 +274,39 @@ function InteractiveSearch({
       ) : null}
 
       {!isFetching && !!data.length ? (
-        <div ref={measureRef}>
-          <InteractiveSearchTableHeader
-            columns={columns}
-            sortKey={sortKey}
-            sortDirection={sortDirection}
-            onSortPress={handleSortPress}
-          />
-
-          <VariableSizeList<RowItemData>
-            ref={listRef}
-            outerRef={listOuterRef}
-            style={{ width: '100%', height: '100%', overflow: 'visible' }}
-            width={bounds.width}
-            height={viewportHeight}
-            itemCount={data.length}
-            itemSize={getRowHeight}
-            estimatedItemSize={ESTIMATED_ROW_HEIGHT}
-            itemData={itemData}
-            overscanCount={20}
+        <div className={styles.resultsScroller}>
+          <div
+            ref={measureRef}
+            className={styles.results}
+            style={
+              {
+                '--interactive-search-title-width': `${titleWidth}px`,
+                '--interactive-search-fixed-columns-width': `${FIXED_COLUMNS_WIDTH}px`,
+              } as React.CSSProperties
+            }
           >
-            {Row}
-          </VariableSizeList>
+            <InteractiveSearchTableHeader
+              columns={columns}
+              sortKey={sortKey}
+              sortDirection={sortDirection}
+              onSortPress={handleSortPress}
+            />
+
+            <VariableSizeList<RowItemData>
+              ref={listRef}
+              outerRef={listOuterRef}
+              style={{ width: '100%', height: '100%', overflow: 'visible' }}
+              width={bounds.width}
+              height={viewportHeight}
+              itemCount={data.length}
+              itemSize={getRowHeight}
+              estimatedItemSize={ESTIMATED_ROW_HEIGHT}
+              itemData={itemData}
+              overscanCount={20}
+            >
+              {Row}
+            </VariableSizeList>
+          </div>
         </div>
       ) : null}
 

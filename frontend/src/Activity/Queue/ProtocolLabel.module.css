@@ -1,5 +1,6 @@
 .torrent,
 .usenet,
+.directConnect,
 .unknown {
   composes: label from 'Components/Label.module.css';
 }

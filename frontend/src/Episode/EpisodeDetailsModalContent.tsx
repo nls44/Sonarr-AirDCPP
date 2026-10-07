@@ -14,6 +14,7 @@ import useEpisode, {
   getQueryKey,
   useToggleEpisodesMonitored,
 } from 'Episode/useEpisode';
+import { scrollDirections } from 'Helpers/Props';
 import { useClearReleasesOnUnmount } from 'InteractiveSearch/useReleases';
 import Series from 'Series/Series';
 import { useSingleSeries } from 'Series/useSeries';
@@ -127,7 +128,7 @@ function EpisodeDetailsModalContent({
         </div>
       </ModalHeader>
 
-      <ModalBody ref={modalBodyRef}>
+      <ModalBody ref={modalBodyRef} scrollDirection={scrollDirections.VERTICAL}>
         <Tabs
           className={styles.tabs}
           selectedIndex={TABS.indexOf(currentlySelectedTab)}

@@ -13,7 +13,7 @@
     margin-left: 12px;
     height: 1px;
     background-color: var(--inputBorderColor);
-    content: "";
+    content: '';
     opacity: 0.5;
   }
 }
@@ -70,7 +70,9 @@
 
   margin: 0;
   padding: 0;
+  width: 100%;
   border-bottom: 1px solid var(--borderColor);
+  background-color: var(--modalBackgroundColor);
 }
 
 .tab {
